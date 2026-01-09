@@ -1,201 +1,298 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Image,
   ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { useUser } from '@/contexts/UserContext';
-import { colors, commonStyles } from '@/styles/commonStyles';
+import { colors } from '@/styles/commonStyles';
 import { Language, UserType } from '@/types';
+import { useUser } from '@/contexts/UserContext';
 
 export default function WelcomeScreen() {
   const router = useRouter();
-  const { selectedLanguage, setSelectedLanguage, setSelectedUserType } = useUser();
+  const { setLanguage, setUserType } = useUser();
+  const [selectedLanguage, setSelectedLanguage] = useState<Language | null>(null);
+  const [selectedUserType, setSelectedUserType] = useState<UserType | null>(null);
 
   const handleLanguageSelect = (language: Language) => {
-    console.log('Language selected:', language);
     setSelectedLanguage(language);
+    setLanguage(language);
   };
 
   const handleUserTypeSelect = (userType: UserType) => {
-    console.log('User type selected:', userType);
     setSelectedUserType(userType);
-    
-    if (userType === 'parent') {
-      router.push('/registration/parent');
-    } else {
-      router.push('/registration/doula');
+    setUserType(userType);
+  };
+
+  const handleContinue = () => {
+    if (selectedLanguage && selectedUserType) {
+      router.push(selectedUserType === 'parent' ? '/registration/parent' : '/registration/doula');
     }
   };
 
   const t = (key: string) => {
     const translations: Record<string, Record<Language, string>> = {
-      welcome: { english: 'Welcome to', spanish: 'Bienvenido a' },
-      subtitle: {
-        english: 'Connecting new parents with certified doulas',
-        spanish: 'Conectando nuevos padres con doulas certificadas',
-      },
-      selectLanguage: {
-        english: 'Select Your Language',
-        spanish: 'Selecciona tu idioma',
-      },
-      selectUserType: {
-        english: 'I am a...',
-        spanish: 'Soy un...',
-      },
-      newParent: {
-        english: 'New Parent',
-        spanish: 'Nuevo Padre',
-      },
-      doula: {
-        english: 'Doula',
-        spanish: 'Doula',
-      },
+      selectLanguage: { en: 'Select Language', es: 'Seleccionar Idioma' },
+      english: { en: 'English', es: 'Inglés' },
+      spanish: { en: 'Spanish', es: 'Español' },
+      iAmA: { en: 'I am a...', es: 'Soy un...' },
+      newParent: { en: 'New Parent', es: 'Nuevo Padre' },
+      doula: { en: 'Doula', es: 'Doula' },
+      continue: { en: 'Continue', es: 'Continuar' },
     };
-    return translations[key]?.[selectedLanguage] || key;
+    return translations[key]?.[selectedLanguage || 'en'] || key;
   };
 
   return (
-    <SafeAreaView style={commonStyles.container}>
+    <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Logo Section */}
         <View style={styles.logoContainer}>
-          <Image
-            source={{ uri: 'https://prod-finalquest-user-projects-storage-bucket-aws.s3.amazonaws.com/user-projects/3657acf7-31f1-49b8-b102-88845426429d/assets/images/fd2e996e-be1f-45aa-8204-b7d5764d5e93.png?AWSAccessKeyId=AKIAVRUVRKQJC5DISQ4Q&Signature=R1FBlEbrMcusxaJ%2B%2F%2FyEjWzNZ78%3D&Expires=1768028291' }}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={styles.title}>{t('welcome')}</Text>
-          <Text style={styles.brandName}>Doula CONNECT</Text>
-          <Text style={styles.subtitle}>{t('subtitle')}</Text>
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoTextDoula}>DOULA</Text>
+            <Text style={styles.logoTextConnect}>CONNECT</Text>
+          </View>
+          <Text style={styles.tagline}>Connecting Care, Supporting Families</Text>
         </View>
 
+        {/* Language Selection */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('selectLanguage')}</Text>
           <View style={styles.buttonRow}>
             <TouchableOpacity
               style={[
-                styles.languageButton,
-                selectedLanguage === 'english' && styles.languageButtonActive,
+                styles.optionButton,
+                selectedLanguage === 'en' && styles.optionButtonSelected,
               ]}
-              onPress={() => handleLanguageSelect('english')}
+              onPress={() => handleLanguageSelect('en')}
             >
               <Text
                 style={[
-                  styles.languageButtonText,
-                  selectedLanguage === 'english' && styles.languageButtonTextActive,
+                  styles.optionText,
+                  selectedLanguage === 'en' && styles.optionTextSelected,
                 ]}
               >
-                English
+                {t('english')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
-                styles.languageButton,
-                selectedLanguage === 'spanish' && styles.languageButtonActive,
+                styles.optionButton,
+                selectedLanguage === 'es' && styles.optionButtonSelected,
               ]}
-              onPress={() => handleLanguageSelect('spanish')}
+              onPress={() => handleLanguageSelect('es')}
             >
               <Text
                 style={[
-                  styles.languageButtonText,
-                  selectedLanguage === 'spanish' && styles.languageButtonTextActive,
+                  styles.optionText,
+                  selectedLanguage === 'es' && styles.optionTextSelected,
                 ]}
               >
-                Español
+                {t('spanish')}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
 
+        {/* User Type Selection */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('selectUserType')}</Text>
+          <Text style={styles.sectionTitle}>{t('iAmA')}</Text>
           <TouchableOpacity
-            style={commonStyles.button}
+            style={[
+              styles.userTypeButton,
+              selectedUserType === 'parent' && styles.userTypeButtonSelected,
+            ]}
             onPress={() => handleUserTypeSelect('parent')}
           >
-            <Text style={commonStyles.buttonText}>{t('newParent')}</Text>
+            <Text
+              style={[
+                styles.userTypeText,
+                selectedUserType === 'parent' && styles.userTypeTextSelected,
+              ]}
+            >
+              {t('newParent')}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={commonStyles.secondaryButton}
+            style={[
+              styles.userTypeButton,
+              selectedUserType === 'doula' && styles.userTypeButtonSelected,
+            ]}
             onPress={() => handleUserTypeSelect('doula')}
           >
-            <Text style={commonStyles.secondaryButtonText}>{t('doula')}</Text>
+            <Text
+              style={[
+                styles.userTypeText,
+                selectedUserType === 'doula' && styles.userTypeTextSelected,
+              ]}
+            >
+              {t('doula')}
+            </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Continue Button */}
+        <TouchableOpacity
+          style={[
+            styles.continueButton,
+            (!selectedLanguage || !selectedUserType) && styles.continueButtonDisabled,
+          ]}
+          onPress={handleContinue}
+          disabled={!selectedLanguage || !selectedUserType}
+        >
+          <Text style={styles.continueButtonText}>{t('continue')}</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.beige,
+  },
   scrollContent: {
+    flexGrow: 1,
     padding: 24,
-    paddingTop: 48,
+    justifyContent: 'center',
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 60,
+    marginTop: 20,
   },
-  logo: {
-    width: 200,
-    height: 200,
-    marginBottom: 24,
+  logoCircle: {
+    width: 220,
+    height: 220,
+    backgroundColor: colors.pink,
+    borderRadius: 110,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 5,
+    borderColor: colors.black,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  title: {
-    fontSize: 24,
-    color: colors.textSecondary,
-    marginBottom: 8,
-  },
-  brandName: {
+  logoTextDoula: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: colors.primary,
-    marginBottom: 12,
+    color: colors.black,
+    letterSpacing: 3,
+    marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
+  logoTextConnect: {
+    fontSize: 30,
+    fontWeight: '700',
+    color: colors.black,
+    letterSpacing: 2,
+  },
+  tagline: {
+    fontSize: 17,
+    color: colors.black,
+    fontStyle: 'italic',
     textAlign: 'center',
+    paddingHorizontal: 20,
   },
   section: {
-    marginBottom: 32,
+    marginBottom: 36,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 16,
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.black,
+    marginBottom: 18,
     textAlign: 'center',
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'space-between',
+    gap: 16,
   },
-  languageButton: {
+  optionButton: {
     flex: 1,
-    backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
+    backgroundColor: colors.white,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    borderWidth: 3,
+    borderColor: colors.black,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  languageButtonActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.highlight,
+  optionButtonSelected: {
+    backgroundColor: colors.pink,
+    borderWidth: 4,
   },
-  languageButtonText: {
-    fontSize: 16,
+  optionText: {
+    fontSize: 17,
     fontWeight: '600',
-    color: colors.text,
+    color: colors.black,
+    textAlign: 'center',
   },
-  languageButtonTextActive: {
-    color: colors.primary,
+  optionTextSelected: {
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  userTypeButton: {
+    backgroundColor: colors.white,
+    paddingVertical: 22,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    marginBottom: 16,
+    borderWidth: 3,
+    borderColor: colors.black,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  userTypeButtonSelected: {
+    backgroundColor: colors.pink,
+    borderWidth: 4,
+  },
+  userTypeText: {
+    fontSize: 19,
+    fontWeight: '600',
+    color: colors.black,
+    textAlign: 'center',
+  },
+  userTypeTextSelected: {
+    fontWeight: 'bold',
+    fontSize: 20,
+  },
+  continueButton: {
+    backgroundColor: colors.black,
+    paddingVertical: 20,
+    borderRadius: 14,
+    marginTop: 32,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  continueButtonDisabled: {
+    opacity: 0.4,
+  },
+  continueButtonText: {
+    fontSize: 19,
+    fontWeight: 'bold',
+    color: colors.white,
+    textAlign: 'center',
+    letterSpacing: 1,
   },
 });
