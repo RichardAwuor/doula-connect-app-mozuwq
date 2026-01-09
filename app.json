@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "Doula CONNECT",
-    "slug": "doula-connect",
-    "version": "1.0.0",
+    "slug": "doula-connect-app-mozuwq",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/final_quest_240x240.png",
     "scheme": "doulaconnect",
@@ -31,12 +31,13 @@
         "foregroundImage": "./assets/images/final_quest_240x240.png",
         "backgroundColor": "#FAF7F5"
       },
-      "package": "com.doulaconnect.app",
+      "package": "com.simphoni.doula",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"
-      ]
+      ],
+      "versionCode": 2
     },
     "web": {
       "bundler": "metro",
@@ -69,7 +70,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "backendUrl": "https://ccnzxmgx5untppbgc8qpbsnadacd3bup.app.specular.dev"
+      "backendUrl": "https://58wab47v29usdn5dvkdh2bb8tmk9hce6.app.specular.dev"
     }
   }
 }
