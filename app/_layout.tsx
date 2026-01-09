@@ -1,0 +1,74 @@
+
+import * as SplashScreen from "expo-splash-screen";
+import { useFonts } from "expo-font";
+import React, { useEffect } from "react";
+import { useNetworkState } from "expo-network";
+import { useColorScheme, Alert } from "react-native";
+import { StatusBar } from "expo-status-bar";
+import {
+  DarkTheme,
+  DefaultTheme,
+  Theme,
+  ThemeProvider,
+} from "@react-navigation/native";
+import { SystemBars } from "react-native-edge-to-edge";
+import { WidgetProvider } from "@/contexts/WidgetContext";
+import { UserProvider } from "@/contexts/UserContext";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Stack, router } from "expo-router";
+import "react-native-reanimated";
+import { colors } from "@/styles/commonStyles";
+
+SplashScreen.preventAutoHideAsync();
+
+const DoulaTheme: Theme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: colors.primary,
+    background: colors.background,
+    card: colors.card,
+    text: colors.text,
+    border: colors.border,
+    notification: colors.accent,
+  },
+};
+
+export default function RootLayout() {
+  const { isConnected } = useNetworkState();
+  const colorScheme = useColorScheme();
+  const [loaded] = useFonts({
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+  });
+
+  useEffect(() => {
+    if (loaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
+  if (!loaded) {
+    return null;
+  }
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider value={DoulaTheme}>
+        <WidgetProvider>
+          <UserProvider>
+            <SystemBars style="auto" />
+            <StatusBar style="auto" />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="welcome" />
+              <Stack.Screen name="registration/parent" />
+              <Stack.Screen name="registration/doula" />
+              <Stack.Screen name="payment" />
+              <Stack.Screen name="(tabs)" />
+            </Stack>
+          </UserProvider>
+        </WidgetProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
+  );
+}
