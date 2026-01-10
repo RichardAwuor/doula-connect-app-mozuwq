@@ -8,18 +8,23 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '@/contexts/UserContext';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors, commonStyles } from '@/styles/commonStyles';
-import { DoulaProfile, ParentProfile } from '@/types';
+import { DoulaProfile, ParentProfile, DoulaComment, CommentEligibility } from '@/types';
 
 // Mock data for demonstration
 const mockDoulas: DoulaProfile[] = [
   {
     id: '1',
     userType: 'doula',
+    email: 'maria@example.com',
     firstName: 'Maria',
     lastName: 'Rodriguez',
     paymentPreferences: ['self', 'carrot'],
@@ -43,6 +48,7 @@ const mockDoulas: DoulaProfile[] = [
   {
     id: '2',
     userType: 'doula',
+    email: 'sarah@example.com',
     firstName: 'Sarah',
     lastName: 'Johnson',
     paymentPreferences: ['medicaid', 'self'],
@@ -69,6 +75,7 @@ const mockParents: ParentProfile[] = [
   {
     id: '1',
     userType: 'parent',
+    email: 'jennifer@example.com',
     firstName: 'Jennifer',
     lastName: 'Smith',
     state: 'California',
@@ -87,11 +94,40 @@ const mockParents: ParentProfile[] = [
   },
 ];
 
+// Mock comments data
+const mockComments: DoulaComment[] = [
+  {
+    id: '1',
+    contractId: 'contract-1',
+    parentId: 'parent-1',
+    doulaId: '1',
+    parentName: 'Jennifer S.',
+    comment: 'Maria was absolutely wonderful! She provided excellent support during our postpartum period. Highly recommend!',
+    createdAt: new Date('2024-12-15'),
+  },
+  {
+    id: '2',
+    contractId: 'contract-2',
+    parentId: 'parent-2',
+    doulaId: '1',
+    parentName: 'Emily R.',
+    comment: 'Very professional and caring. Made our transition to parenthood so much easier.',
+    createdAt: new Date('2024-11-20'),
+  },
+];
+
 export default function ConnectScreen() {
   const { userProfile } = useUser();
   const [selectedProfile, setSelectedProfile] = useState<DoulaProfile | ParentProfile | null>(null);
   const [matches, setMatches] = useState<(DoulaProfile | ParentProfile)[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Comment state
+  const [commentText, setCommentText] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [commentEligibility, setCommentEligibility] = useState<Record<string, CommentEligibility>>({});
+  const [doulaComments, setDoulaComments] = useState<Record<string, DoulaComment[]>>({});
+  const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
 
   const isParent = userProfile?.userType === 'parent';
 
@@ -108,21 +144,9 @@ export default function ConnectScreen() {
       try {
         console.log('[Connect] Fetching matches for user:', userProfile.id);
         
-        // Backend Integration: Fetch matches from API
-        // Note: This endpoint needs to be implemented on the backend
+        // TODO: Backend Integration - Fetch matches from API
         // Expected endpoint: GET /api/matches?userId={userId}&userType={userType}
         // Expected response: { matches: Array<DoulaProfile | ParentProfile> }
-        
-        // For now, using mock implementation until backend endpoint is ready
-        // Uncomment below when backend is ready:
-        /*
-        const { apiGet } = await import('@/utils/api');
-        const response = await apiGet(
-          `/api/matches?userId=${userProfile.id}&userType=${userProfile.userType}`
-        );
-        console.log('[Connect] Matches fetched:', response.matches.length);
-        setMatches(response.matches);
-        */
         
         // Mock implementation - filter local data
         if (isParent) {
@@ -163,15 +187,274 @@ export default function ConnectScreen() {
     fetchMatches();
   }, [userProfile, isParent]);
 
+  // Fetch comment eligibility and existing comments for each doula (parents only)
+  useEffect(() => {
+    const fetchCommentData = async () => {
+      if (!isParent || !userProfile || matches.length === 0) {
+        return;
+      }
+
+      try {
+        console.log('[Connect] Fetching comment eligibility for doulas');
+        
+        // TODO: Backend Integration - Check comment eligibility for each doula
+        // Expected endpoint: GET /api/contracts/comment-eligibility?parentId={parentId}&doulaId={doulaId}
+        // Expected response: CommentEligibility object
+        
+        // TODO: Backend Integration - Fetch existing comments for each doula
+        // Expected endpoint: GET /api/comments/doula/{doulaId}
+        // Expected response: { comments: DoulaComment[] }
+        
+        // Mock implementation
+        const eligibilityMap: Record<string, CommentEligibility> = {};
+        const commentsMap: Record<string, DoulaComment[]> = {};
+        
+        for (const match of matches) {
+          const doulaId = match.id;
+          
+          // Mock eligibility - simulate that user can comment on first doula
+          if (doulaId === '1') {
+            eligibilityMap[doulaId] = {
+              canComment: true,
+              contractId: 'contract-123',
+              message: 'You can leave a comment for this doula',
+            };
+          } else {
+            eligibilityMap[doulaId] = {
+              canComment: false,
+              daysUntilEligible: 3,
+              message: 'You can comment 3 days after contract start',
+            };
+          }
+          
+          // Mock comments
+          commentsMap[doulaId] = mockComments.filter(c => c.doulaId === doulaId);
+        }
+        
+        setCommentEligibility(eligibilityMap);
+        setDoulaComments(commentsMap);
+      } catch (error) {
+        console.error('[Connect] Error fetching comment data:', error);
+      }
+    };
+
+    fetchCommentData();
+  }, [isParent, userProfile, matches]);
+
+  const handleStartContract = async (doulaId: string) => {
+    if (!userProfile) return;
+
+    try {
+      console.log('[Connect] Starting contract with doula:', doulaId);
+      
+      // TODO: Backend Integration - Create job contract
+      // Expected endpoint: POST /api/contracts
+      // Expected body: { parentId: string, doulaId: string, startDate: Date }
+      // Expected response: { success: boolean, contract: JobContract }
+      
+      Alert.alert(
+        'Contract Started',
+        'Your contract has been started. You can leave a comment after 7 days.',
+        [{ text: 'OK' }]
+      );
+      
+      // Refresh eligibility
+      setCommentEligibility(prev => ({
+        ...prev,
+        [doulaId]: {
+          canComment: false,
+          daysUntilEligible: 7,
+          message: 'You can comment in 7 days',
+        },
+      }));
+    } catch (error) {
+      console.error('[Connect] Error starting contract:', error);
+      Alert.alert('Error', 'Failed to start contract. Please try again.');
+    }
+  };
+
+  const handleSubmitComment = async (doulaId: string) => {
+    if (!userProfile || !commentText.trim()) {
+      Alert.alert('Error', 'Please enter a comment');
+      return;
+    }
+
+    if (commentText.length > 160) {
+      Alert.alert('Error', 'Comment must be 160 characters or less');
+      return;
+    }
+
+    const eligibility = commentEligibility[doulaId];
+    if (!eligibility?.canComment) {
+      Alert.alert('Error', 'You are not eligible to comment yet');
+      return;
+    }
+
+    setSubmittingComment(true);
+    try {
+      console.log('[Connect] Submitting comment for doula:', doulaId);
+      
+      // TODO: Backend Integration - Submit comment
+      // Expected endpoint: POST /api/comments
+      // Expected body: { contractId: string, doulaId: string, comment: string }
+      // Expected response: { success: boolean, comment: DoulaComment }
+      
+      // Mock implementation - add comment locally
+      const newComment: DoulaComment = {
+        id: `comment-${Date.now()}`,
+        contractId: eligibility.contractId || '',
+        parentId: userProfile.id,
+        doulaId: doulaId,
+        parentName: `${userProfile.firstName} ${userProfile.lastName.charAt(0)}.`,
+        comment: commentText,
+        createdAt: new Date(),
+      };
+      
+      setDoulaComments(prev => ({
+        ...prev,
+        [doulaId]: [...(prev[doulaId] || []), newComment],
+      }));
+      
+      setCommentEligibility(prev => ({
+        ...prev,
+        [doulaId]: {
+          canComment: false,
+          hasExistingComment: true,
+          message: 'You have already commented on this contract',
+        },
+      }));
+      
+      setCommentText('');
+      Alert.alert('Success', 'Your comment has been posted!');
+    } catch (error) {
+      console.error('[Connect] Error submitting comment:', error);
+      Alert.alert('Error', 'Failed to submit comment. Please try again.');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const toggleComments = (doulaId: string) => {
+    setExpandedComments(prev => ({
+      ...prev,
+      [doulaId]: !prev[doulaId],
+    }));
+  };
+
+  const renderCommentSection = (doulaId: string) => {
+    const eligibility = commentEligibility[doulaId];
+    const comments = doulaComments[doulaId] || [];
+    const isExpanded = expandedComments[doulaId];
+
+    return (
+      <View style={styles.commentSection}>
+        {/* Comment Input (only if eligible) */}
+        {eligibility?.canComment && (
+          <View style={styles.commentInputContainer}>
+            <Text style={styles.commentInputLabel}>Leave a comment about your experience:</Text>
+            <View style={styles.textInputWrapper}>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Share your experience (max 160 characters)"
+                placeholderTextColor={colors.textSecondary}
+                value={commentText}
+                onChangeText={setCommentText}
+                maxLength={160}
+                multiline
+                numberOfLines={3}
+                editable={!submittingComment}
+              />
+              <Text style={styles.characterCount}>
+                {commentText.length}/160
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                (!commentText.trim() || submittingComment) && styles.submitButtonDisabled,
+              ]}
+              onPress={() => handleSubmitComment(doulaId)}
+              disabled={!commentText.trim() || submittingComment}
+            >
+              {submittingComment ? (
+                <ActivityIndicator size="small" color={colors.background} />
+              ) : (
+                <Text style={styles.submitButtonText}>Submit Comment</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Eligibility Message (if not eligible) */}
+        {eligibility && !eligibility.canComment && (
+          <View style={styles.eligibilityMessage}>
+            <IconSymbol
+              ios_icon_name="info.circle"
+              android_material_icon_name="info"
+              size={16}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.eligibilityText}>{eligibility.message}</Text>
+          </View>
+        )}
+
+        {/* Start Contract Button (if no contract exists) */}
+        {!eligibility && (
+          <TouchableOpacity
+            style={styles.startContractButton}
+            onPress={() => handleStartContract(doulaId)}
+          >
+            <IconSymbol
+              ios_icon_name="doc.text"
+              android_material_icon_name="description"
+              size={20}
+              color={colors.background}
+            />
+            <Text style={styles.startContractButtonText}>Start Contract</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Existing Comments */}
+        {comments.length > 0 && (
+          <View style={styles.commentsContainer}>
+            <TouchableOpacity
+              style={styles.commentsHeader}
+              onPress={() => toggleComments(doulaId)}
+            >
+              <Text style={styles.commentsHeaderText}>
+                Comments ({comments.length})
+              </Text>
+              <IconSymbol
+                ios_icon_name={isExpanded ? 'chevron.up' : 'chevron.down'}
+                android_material_icon_name={isExpanded ? 'expand-less' : 'expand-more'}
+                size={20}
+                color={colors.text}
+              />
+            </TouchableOpacity>
+            
+            {isExpanded && (
+              <View style={styles.commentsList}>
+                {comments.map((comment) => (
+                  <View key={comment.id} style={styles.commentItem}>
+                    <View style={styles.commentHeader}>
+                      <Text style={styles.commentAuthor}>{comment.parentName}</Text>
+                      <Text style={styles.commentDate}>
+                        {new Date(comment.createdAt).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    <Text style={styles.commentText}>{comment.comment}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   const renderDoulaCard = (doula: DoulaProfile) => (
-    <TouchableOpacity
-      key={doula.id}
-      style={commonStyles.card}
-      onPress={() => {
-        console.log('Selected doula:', doula.firstName);
-        setSelectedProfile(doula);
-      }}
-    >
+    <View key={doula.id} style={commonStyles.card}>
       <View style={styles.cardHeader}>
         {doula.profilePicture && (
           <Image source={{ uri: doula.profilePicture.uri }} style={styles.profileImage} />
@@ -247,7 +530,10 @@ export default function ConnectScreen() {
           </View>
         ))}
       </View>
-    </TouchableOpacity>
+
+      {/* Comment Section for Parents */}
+      {isParent && renderCommentSection(doula.id)}
+    </View>
   );
 
   const renderParentCard = (parent: ParentProfile) => (
@@ -349,38 +635,43 @@ export default function ConnectScreen() {
 
   return (
     <SafeAreaView style={commonStyles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={commonStyles.title}>Connect</Text>
-        <Text style={styles.subtitle}>
-          {isParent
-            ? 'Find certified doulas that match your needs'
-            : 'Find families looking for doula services'}
-        </Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Text style={commonStyles.title}>Connect</Text>
+          <Text style={styles.subtitle}>
+            {isParent
+              ? 'Find certified doulas that match your needs'
+              : 'Find families looking for doula services'}
+          </Text>
 
-        {matches.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <IconSymbol
-              ios_icon_name="heart"
-              android_material_icon_name="favorite-border"
-              size={64}
-              color={colors.textSecondary}
-            />
-            <Text style={styles.emptyText}>No matches found</Text>
-            <Text style={styles.emptySubtext}>
-              Check back later for new {isParent ? 'doulas' : 'families'}
-            </Text>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.matchCount}>
-              {matches.length} {matches.length === 1 ? 'match' : 'matches'} found
-            </Text>
-            {matches.map((match) =>
-              isParent ? renderDoulaCard(match as DoulaProfile) : renderParentCard(match as ParentProfile)
-            )}
-          </>
-        )}
-      </ScrollView>
+          {matches.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <IconSymbol
+                ios_icon_name="heart"
+                android_material_icon_name="favorite-border"
+                size={64}
+                color={colors.textSecondary}
+              />
+              <Text style={styles.emptyText}>No matches found</Text>
+              <Text style={styles.emptySubtext}>
+                Check back later for new {isParent ? 'doulas' : 'families'}
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.matchCount}>
+                {matches.length} {matches.length === 1 ? 'match' : 'matches'} found
+              </Text>
+              {matches.map((match) =>
+                isParent ? renderDoulaCard(match as DoulaProfile) : renderParentCard(match as ParentProfile)
+              )}
+            </>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -473,5 +764,129 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textSecondary,
     marginTop: 16,
+  },
+  // Comment Section Styles
+  commentSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  commentInputContainer: {
+    marginBottom: 16,
+  },
+  commentInputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  textInputWrapper: {
+    position: 'relative',
+  },
+  commentInput: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    color: colors.text,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  characterCount: {
+    position: 'absolute',
+    bottom: 8,
+    right: 12,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  submitButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  submitButtonDisabled: {
+    backgroundColor: colors.textSecondary,
+    opacity: 0.5,
+  },
+  submitButtonText: {
+    color: colors.background,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  eligibilityMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.secondary,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  eligibilityText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: colors.textSecondary,
+    flex: 1,
+  },
+  startContractButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+  },
+  startContractButtonText: {
+    color: colors.background,
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  commentsContainer: {
+    marginTop: 12,
+  },
+  commentsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  commentsHeaderText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  commentsList: {
+    marginTop: 8,
+  },
+  commentItem: {
+    backgroundColor: colors.secondary,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  commentAuthor: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  commentDate: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  commentText: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
   },
 });
