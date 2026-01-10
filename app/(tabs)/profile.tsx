@@ -40,11 +40,34 @@ export default function ProfileScreen() {
 
   const isParent = userProfile.userType === 'parent';
 
-  const handleSave = () => {
-    console.log('Saving profile changes');
-    // TODO: Backend Integration - Update user profile in database
-    setIsEditing(false);
-    Alert.alert('Success', 'Profile updated successfully');
+  const handleSave = async () => {
+    console.log('[Profile] Saving profile changes');
+    
+    try {
+      // Backend Integration: Update user profile in database
+      // Note: This endpoint needs to be implemented on the backend
+      // Expected endpoint: PUT /api/users/profile
+      // Expected body: UserProfile object
+      // Expected response: { success: boolean, profile: UserProfile }
+      
+      // For now, using mock implementation until backend endpoint is ready
+      // Uncomment below when backend is ready:
+      /*
+      const { authenticatedPut } = await import('@/utils/api');
+      const response = await authenticatedPut('/api/users/profile', userProfile);
+      console.log('[Profile] Update response:', response);
+      
+      if (response.profile) {
+        setUserProfile(response.profile);
+      }
+      */
+      
+      setIsEditing(false);
+      Alert.alert('Success', 'Profile updated successfully');
+    } catch (error) {
+      console.error('[Profile] Error updating profile:', error);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    }
   };
 
   const handleLogout = () => {

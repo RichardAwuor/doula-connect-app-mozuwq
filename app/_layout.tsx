@@ -18,8 +18,16 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Stack, router } from "expo-router";
 import "react-native-reanimated";
 import { colors } from "@/styles/commonStyles";
+import Constants from "expo-constants";
 
 SplashScreen.preventAutoHideAsync();
+
+// Log backend URL at startup for debugging
+const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl;
+console.log('='.repeat(60));
+console.log('🚀 Doula Connect App Starting');
+console.log('📡 Backend URL:', BACKEND_URL || 'NOT CONFIGURED');
+console.log('='.repeat(60));
 
 const DoulaTheme: Theme = {
   ...DefaultTheme,
@@ -61,6 +69,7 @@ export default function RootLayout() {
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" />
               <Stack.Screen name="welcome" />
+              <Stack.Screen name="auth/email" />
               <Stack.Screen name="registration/parent" />
               <Stack.Screen name="registration/doula" />
               <Stack.Screen name="payment" />

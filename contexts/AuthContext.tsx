@@ -131,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         password,
         name,
-        callbackURL: "/profile", // TODO: Update redirect URL
+        callbackURL: "/(tabs)/profile",
       });
       await fetchUser();
     } catch (error) {
@@ -151,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Native: Use deep linking (handled by Better Auth)
         await authClient.signIn.social({
           provider: "google",
-          callbackURL: "/profile", // TODO: Update redirect URL
+          callbackURL: "/(tabs)/profile",
         });
         await fetchUser();
       }
@@ -172,7 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Native: Use deep linking
         await authClient.signIn.social({
           provider: "apple",
-          callbackURL: "/profile", // TODO: Update redirect URL
+          callbackURL: "/(tabs)/profile",
         });
         await fetchUser();
       }
@@ -193,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Native: Use deep linking
         await authClient.signIn.social({
           provider: "github",
-          callbackURL: "/profile", // TODO: Update redirect URL
+          callbackURL: "/(tabs)/profile",
         });
         await fetchUser();
       }

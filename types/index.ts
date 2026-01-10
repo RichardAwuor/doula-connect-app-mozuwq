@@ -1,6 +1,6 @@
 
 export type UserType = 'parent' | 'doula';
-export type Language = 'english' | 'spanish';
+export type Language = 'en' | 'es';
 
 export type ServiceCategory = 'birth' | 'postpartum';
 export type FinancingType = 'self' | 'carrot' | 'medicaid';
@@ -31,6 +31,7 @@ export interface Referee {
 export interface ParentProfile {
   id: string;
   userType: 'parent';
+  email: string;
   firstName: string;
   lastName: string;
   state: string;
@@ -51,6 +52,7 @@ export interface ParentProfile {
 export interface DoulaProfile {
   id: string;
   userType: 'doula';
+  email: string;
   firstName: string;
   lastName: string;
   paymentPreferences: FinancingType[];

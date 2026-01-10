@@ -29,16 +29,82 @@ export default function PaymentScreen() {
   const subscriptionPeriod = isParent ? 'Annual' : 'Monthly';
 
   const handlePayment = async () => {
-    console.log('Processing payment');
+    console.log('[Payment] Processing payment for user:', userProfile.id);
     setProcessing(true);
 
-    // TODO: Backend Integration - Create Stripe checkout session
-    // TODO: Backend Integration - Handle payment success/failure
-    // TODO: Backend Integration - Update user subscription status
-    
-    // For now, simulate payment with Stripe link
     try {
-      const stripeUrl = 'https://stripe.com'; // Replace with actual Stripe checkout URL
+      // Backend Integration: Create Stripe checkout session
+      // Note: These endpoints need to be implemented on the backend
+      // Expected endpoint: POST /api/payments/create-checkout-session
+      // Expected body: { userId: string, userType: string, amount: number }
+      // Expected response: { sessionId: string, checkoutUrl: string }
+      
+      // For now, using mock implementation until backend endpoint is ready
+      // Uncomment below when backend is ready:
+      /*
+      const { apiPost } = await import('@/utils/api');
+      const response = await apiPost('/api/payments/create-checkout-session', {
+        userId: userProfile.id,
+        userType: userProfile.userType,
+        amount: subscriptionFee,
+        period: subscriptionPeriod.toLowerCase(),
+      });
+      console.log('[Payment] Checkout session created:', response);
+      
+      const checkoutUrl = response.checkoutUrl;
+      const canOpen = await Linking.canOpenURL(checkoutUrl);
+      
+      if (canOpen) {
+        await Linking.openURL(checkoutUrl);
+        
+        // Poll for payment status
+        // Expected endpoint: GET /api/payments/status/:sessionId
+        // Expected response: { status: 'pending' | 'completed' | 'failed' }
+        const pollInterval = setInterval(async () => {
+          const statusResponse = await apiGet(`/api/payments/status/${response.sessionId}`);
+          
+          if (statusResponse.status === 'completed') {
+            clearInterval(pollInterval);
+            
+            // Update user subscription status
+            // Expected endpoint: PUT /api/users/subscription
+            // Expected body: { userId: string, subscriptionActive: boolean }
+            await apiPut('/api/users/subscription', {
+              userId: userProfile.id,
+              subscriptionActive: true,
+            });
+            
+            Alert.alert(
+              'Payment Successful',
+              'Your subscription is now active!',
+              [
+                {
+                  text: 'Continue',
+                  onPress: () => {
+                    setUserProfile({
+                      ...userProfile,
+                      subscriptionActive: true,
+                    });
+                    router.replace('/(tabs)/connect');
+                  },
+                },
+              ]
+            );
+            setProcessing(false);
+          } else if (statusResponse.status === 'failed') {
+            clearInterval(pollInterval);
+            Alert.alert('Error', 'Payment failed. Please try again.');
+            setProcessing(false);
+          }
+        }, 3000);
+      } else {
+        Alert.alert('Error', 'Unable to open payment page');
+        setProcessing(false);
+      }
+      */
+      
+      // Mock implementation for now
+      const stripeUrl = 'https://stripe.com';
       const canOpen = await Linking.canOpenURL(stripeUrl);
       
       if (canOpen) {
@@ -46,7 +112,7 @@ export default function PaymentScreen() {
         
         // Simulate successful payment after a delay
         setTimeout(() => {
-          console.log('Payment successful');
+          console.log('[Payment] Payment successful (mock)');
           Alert.alert(
             'Payment Successful',
             'Your subscription is now active!',
@@ -66,12 +132,12 @@ export default function PaymentScreen() {
           setProcessing(false);
         }, 2000);
       } else {
-        console.log('Cannot open Stripe URL');
+        console.log('[Payment] Cannot open Stripe URL');
         Alert.alert('Error', 'Unable to open payment page');
         setProcessing(false);
       }
     } catch (error) {
-      console.error('Payment error:', error);
+      console.error('[Payment] Payment error:', error);
       Alert.alert('Error', 'Payment processing failed. Please try again.');
       setProcessing(false);
     }
