@@ -117,11 +117,8 @@ export default function WelcomeScreen() {
       setLanguage(selectedLanguage);
       setUserType(selectedUserType);
       
-      if (selectedUserType === 'parent') {
-        router.push('/registration/parent');
-      } else {
-        router.push('/registration/doula');
-      }
+      // Navigate to email authentication
+      router.push('/auth/email');
     }
   };
 

@@ -30,7 +30,7 @@ import {
 
 export default function DoulaRegistrationScreen() {
   const router = useRouter();
-  const { setUserProfile } = useUser();
+  const { userEmail, language, setUserProfile } = useUser();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -38,7 +38,7 @@ export default function DoulaRegistrationScreen() {
   const [state, setState] = useState('');
   const [town, setTown] = useState('');
   const [zipCode, setZipCode] = useState('');
-  const [driveDistance, setDriveDistance] = useState(35);
+  const [driveDistance, setDriveDistance] = useState(25);
   const [spokenLanguages, setSpokenLanguages] = useState<SpokenLanguage[]>([]);
   const [hourlyRateMin, setHourlyRateMin] = useState('');
   const [hourlyRateMax, setHourlyRateMax] = useState('');
@@ -51,6 +51,53 @@ export default function DoulaRegistrationScreen() {
   ]);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
+  const t = (key: string) => {
+    const translations: Record<string, Record<string, string>> = {
+      title: { en: 'Doula Registration', es: 'Registro de Doula' },
+      subtitle: { en: 'Complete your profile to connect with new parents', es: 'Complete su perfil para conectarse con nuevos padres' },
+      personalInfo: { en: 'Personal Information', es: 'Información Personal' },
+      firstName: { en: 'First Name', es: 'Nombre' },
+      lastName: { en: 'Last Name', es: 'Apellido' },
+      state: { en: 'State', es: 'Estado' },
+      town: { en: 'Town', es: 'Ciudad' },
+      zipCode: { en: 'Zip Code', es: 'Código Postal' },
+      driveDistance: { en: 'Preferred Drive Distance', es: 'Distancia de Conducción Preferida' },
+      paymentServices: { en: 'Payment & Services', es: 'Pago y Servicios' },
+      paymentPref: { en: 'Payment Preference', es: 'Preferencia de Pago' },
+      directCash: { en: 'Direct Cash', es: 'Efectivo Directo' },
+      carrot: { en: 'CARROT Fertility', es: 'CARROT Fertility' },
+      medicaid: { en: 'Medicaid/MediCal', es: 'Medicaid/MediCal' },
+      hourlyRate: { en: 'Hourly Rate (USD)', es: 'Tarifa por Hora (USD)' },
+      minimum: { en: 'Minimum', es: 'Mínimo' },
+      maximum: { en: 'Maximum', es: 'Máximo' },
+      serviceCategories: { en: 'Service Categories', es: 'Categorías de Servicio' },
+      birthDoula: { en: 'Birth Doula', es: 'Doula de Parto' },
+      postpartumDoula: { en: 'Postpartum Doula', es: 'Doula Posparto' },
+      languages: { en: 'Languages', es: 'Idiomas' },
+      certifications: { en: 'Certifications', es: 'Certificaciones' },
+      doulaCert: { en: 'Doula Certification', es: 'Certificación de Doula' },
+      basicLife: { en: 'Basic Life Support', es: 'Soporte Vital Básico' },
+      liability: { en: 'Certificate of Liability Insurance', es: 'Certificado de Seguro de Responsabilidad' },
+      covid: { en: 'COVID-19 Immunization', es: 'Inmunización COVID-19' },
+      infantSleep: { en: 'Infant Sleep', es: 'Sueño Infantil' },
+      other: { en: 'Other', es: 'Otro' },
+      profilePic: { en: 'Profile Picture', es: 'Foto de Perfil' },
+      uploadPic: { en: 'Upload Full-Body Picture', es: 'Subir Foto de Cuerpo Completo' },
+      changePic: { en: 'Change Picture', es: 'Cambiar Foto' },
+      certDocs: { en: 'Certification Documents', es: 'Documentos de Certificación' },
+      uploadDocs: { en: 'Upload Documents', es: 'Subir Documentos' },
+      docsHelper: { en: 'Upload up to 7 documents (PDF, JPEG, PNG)', es: 'Sube hasta 7 documentos (PDF, JPEG, PNG)' },
+      referees: { en: 'Referees', es: 'Referencias' },
+      refereesHelper: { en: 'Add up to 3 referees', es: 'Agrega hasta 3 referencias' },
+      referee: { en: 'Referee', es: 'Referencia' },
+      addReferee: { en: 'Add Referee', es: 'Agregar Referencia' },
+      terms: { en: 'I accept the terms and conditions of platform use', es: 'Acepto los términos y condiciones de uso de la plataforma' },
+      continue: { en: 'Continue to Payment', es: 'Continuar al Pago' },
+      back: { en: 'Back', es: 'Atrás' },
+    };
+    return translations[key]?.[language] || key;
+  };
+
   const togglePaymentPreference = (type: FinancingType) => {
     console.log('Toggle payment preference:', type);
     setPaymentPreferences((prev) =>
@@ -58,12 +105,12 @@ export default function DoulaRegistrationScreen() {
     );
   };
 
-  const toggleLanguage = (language: SpokenLanguage) => {
-    console.log('Toggle language:', language);
+  const toggleLanguage = (lang: SpokenLanguage) => {
+    console.log('Toggle language:', lang);
     setSpokenLanguages((prev) =>
-      prev.includes(language)
-        ? prev.filter((l) => l !== language)
-        : [...prev, language]
+      prev.includes(lang)
+        ? prev.filter((l) => l !== lang)
+        : [...prev, lang]
     );
   };
 
@@ -148,8 +195,8 @@ export default function DoulaRegistrationScreen() {
     setReferees(referees.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = () => {
-    console.log('Submitting doula registration');
+  const handleSubmit = async () => {
+    console.log('[Registration] Submitting doula registration');
     
     if (!firstName || !lastName || !state || !town || !zipCode) {
       Alert.alert('Error', 'Please fill in all required fields');
@@ -179,6 +226,7 @@ export default function DoulaRegistrationScreen() {
     const profile: DoulaProfile = {
       id: Date.now().toString(),
       userType: 'doula',
+      email: userEmail || '',
       firstName,
       lastName,
       paymentPreferences,
@@ -198,147 +246,195 @@ export default function DoulaRegistrationScreen() {
       subscriptionActive: false,
     };
 
-    console.log('Doula profile created:', profile);
-    setUserProfile(profile);
-    router.push('/payment');
+    console.log('[Registration] Doula profile created:', profile);
+
+    try {
+      // Backend Integration: Create doula profile in database
+      // Note: This endpoint needs to be implemented on the backend
+      // Expected endpoint: POST /api/users/doula
+      // Expected body: DoulaProfile object
+      // Expected response: { success: boolean, userId: string, profile: DoulaProfile }
+      
+      // For now, using local state until backend endpoint is ready
+      // Uncomment below when backend is ready:
+      /*
+      const { apiPost } = await import('@/utils/api');
+      const response = await apiPost('/api/users/doula', profile);
+      console.log('[Registration] Profile created:', response);
+      
+      if (response.profile) {
+        setUserProfile(response.profile);
+      }
+      */
+      
+      setUserProfile(profile);
+      router.push('/payment');
+    } catch (error) {
+      console.error('[Registration] Error creating profile:', error);
+      Alert.alert('Error', 'Failed to create profile. Please try again.');
+    }
   };
 
   return (
     <SafeAreaView style={commonStyles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={commonStyles.title}>Doula Registration</Text>
-        <Text style={styles.subtitle}>
-          Complete your profile to connect with new parents
-        </Text>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <IconSymbol 
+              ios_icon_name="chevron.left" 
+              android_material_icon_name="arrow-back"
+              size={24}
+              color={colors.text}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={commonStyles.title}>{t('title')}</Text>
+        <Text style={styles.subtitle}>{t('subtitle')}</Text>
+
+        {userEmail && (
+          <View style={styles.emailBadge}>
+            <IconSymbol 
+              ios_icon_name="envelope.fill" 
+              android_material_icon_name="email"
+              size={16}
+              color={colors.primary}
+            />
+            <Text style={styles.emailText}>{userEmail}</Text>
+          </View>
+        )}
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>Personal Information</Text>
+          <Text style={commonStyles.subtitle}>{t('personalInfo')}</Text>
           
-          <Text style={commonStyles.label}>First Name *</Text>
+          <Text style={commonStyles.label}>{t('firstName')} *</Text>
           <TextInput
             style={commonStyles.input}
             value={firstName}
             onChangeText={setFirstName}
-            placeholder="Enter your first name"
+            placeholder={t('firstName')}
             placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={commonStyles.label}>Last Name *</Text>
+          <Text style={commonStyles.label}>{t('lastName')} *</Text>
           <TextInput
             style={commonStyles.input}
             value={lastName}
             onChangeText={setLastName}
-            placeholder="Enter your last name"
+            placeholder={t('lastName')}
             placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={commonStyles.label}>State *</Text>
+          <Text style={commonStyles.label}>{t('state')} *</Text>
           <TextInput
             style={commonStyles.input}
             value={state}
             onChangeText={setState}
-            placeholder="Enter your state"
+            placeholder={t('state')}
             placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={commonStyles.label}>Town *</Text>
+          <Text style={commonStyles.label}>{t('town')} *</Text>
           <TextInput
             style={commonStyles.input}
             value={town}
             onChangeText={setTown}
-            placeholder="Enter your town"
+            placeholder={t('town')}
             placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={commonStyles.label}>Zip Code *</Text>
+          <Text style={commonStyles.label}>{t('zipCode')} *</Text>
           <TextInput
             style={commonStyles.input}
             value={zipCode}
             onChangeText={setZipCode}
-            placeholder="Enter your zip code"
+            placeholder={t('zipCode')}
             placeholderTextColor={colors.textSecondary}
             keyboardType="numeric"
           />
 
-          <Text style={commonStyles.label}>Preferred Drive Distance: {driveDistance} miles</Text>
+          <Text style={commonStyles.label}>{t('driveDistance')}: {driveDistance} miles</Text>
           <View style={styles.sliderContainer}>
             <Text style={styles.sliderLabel}>1 mile</Text>
-            <Text style={styles.sliderLabel}>70 miles</Text>
+            <Text style={styles.sliderLabel}>50 miles</Text>
           </View>
           <TextInput
             style={commonStyles.input}
             value={driveDistance.toString()}
             onChangeText={(text) => {
               const value = parseInt(text) || 1;
-              setDriveDistance(Math.min(Math.max(value, 1), 70));
+              setDriveDistance(Math.min(Math.max(value, 1), 50));
             }}
-            placeholder="Enter drive distance (1-70 miles)"
+            placeholder="Enter drive distance (1-50 miles)"
             placeholderTextColor={colors.textSecondary}
             keyboardType="numeric"
           />
         </View>
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>Payment & Services</Text>
+          <Text style={commonStyles.subtitle}>{t('paymentServices')}</Text>
           
-          <Text style={commonStyles.label}>Payment Preference *</Text>
+          <Text style={commonStyles.label}>{t('paymentPref')} *</Text>
           <CheckboxItem
-            label="Direct Cash"
+            label={t('directCash')}
             checked={paymentPreferences.includes('self')}
             onPress={() => togglePaymentPreference('self')}
           />
           <CheckboxItem
-            label="CARROT Fertility"
+            label={t('carrot')}
             checked={paymentPreferences.includes('carrot')}
             onPress={() => togglePaymentPreference('carrot')}
           />
           <CheckboxItem
-            label="Medicaid/MediCal"
+            label={t('medicaid')}
             checked={paymentPreferences.includes('medicaid')}
             onPress={() => togglePaymentPreference('medicaid')}
           />
 
-          <Text style={[commonStyles.label, { marginTop: 16 }]}>Hourly Rate (USD)</Text>
+          <Text style={[commonStyles.label, { marginTop: 16 }]}>{t('hourlyRate')}</Text>
           <View style={styles.rateContainer}>
             <View style={{ flex: 1 }}>
-              <Text style={commonStyles.label}>Minimum</Text>
+              <Text style={commonStyles.label}>{t('minimum')}</Text>
               <TextInput
                 style={commonStyles.input}
                 value={hourlyRateMin}
                 onChangeText={setHourlyRateMin}
-                placeholder="Min rate"
+                placeholder="Min"
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="numeric"
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={commonStyles.label}>Maximum</Text>
+              <Text style={commonStyles.label}>{t('maximum')}</Text>
               <TextInput
                 style={commonStyles.input}
                 value={hourlyRateMax}
                 onChangeText={setHourlyRateMax}
-                placeholder="Max rate"
+                placeholder="Max"
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="numeric"
               />
             </View>
           </View>
 
-          <Text style={commonStyles.label}>Service Categories *</Text>
+          <Text style={commonStyles.label}>{t('serviceCategories')} *</Text>
           <CheckboxItem
-            label="Birth Doula"
+            label={t('birthDoula')}
             checked={serviceCategories.includes('birth')}
             onPress={() => toggleServiceCategory('birth')}
           />
           <CheckboxItem
-            label="Postpartum Doula"
+            label={t('postpartumDoula')}
             checked={serviceCategories.includes('postpartum')}
             onPress={() => toggleServiceCategory('postpartum')}
           />
         </View>
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>Languages</Text>
+          <Text style={commonStyles.subtitle}>{t('languages')}</Text>
           {(['English', 'Spanish', 'Chinese', 'Tagalog', 'Arabic', 'Hebrew', 'Vietnamese'] as SpokenLanguage[]).map((lang) => (
             <CheckboxItem
               key={lang}
@@ -350,41 +446,41 @@ export default function DoulaRegistrationScreen() {
         </View>
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>Certifications</Text>
+          <Text style={commonStyles.subtitle}>{t('certifications')}</Text>
           <CheckboxItem
-            label="Doula Certification"
+            label={t('doulaCert')}
             checked={certifications.includes('doula_certification')}
             onPress={() => toggleCertification('doula_certification')}
           />
           <CheckboxItem
-            label="Basic Life Support"
+            label={t('basicLife')}
             checked={certifications.includes('basic_life_support')}
             onPress={() => toggleCertification('basic_life_support')}
           />
           <CheckboxItem
-            label="Certificate of Liability Insurance"
+            label={t('liability')}
             checked={certifications.includes('liability_insurance')}
             onPress={() => toggleCertification('liability_insurance')}
           />
           <CheckboxItem
-            label="COVID-19 Immunization"
+            label={t('covid')}
             checked={certifications.includes('covid_immunization')}
             onPress={() => toggleCertification('covid_immunization')}
           />
           <CheckboxItem
-            label="Infant Sleep"
+            label={t('infantSleep')}
             checked={certifications.includes('infant_sleep')}
             onPress={() => toggleCertification('infant_sleep')}
           />
           <CheckboxItem
-            label="Other"
+            label={t('other')}
             checked={certifications.includes('other')}
             onPress={() => toggleCertification('other')}
           />
         </View>
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>Profile Picture *</Text>
+          <Text style={commonStyles.subtitle}>{t('profilePic')} *</Text>
           <TouchableOpacity style={styles.uploadButton} onPress={pickProfilePicture}>
             <IconSymbol
               ios_icon_name="camera"
@@ -393,7 +489,7 @@ export default function DoulaRegistrationScreen() {
               color={colors.primary}
             />
             <Text style={styles.uploadButtonText}>
-              {profilePicture ? 'Change Picture' : 'Upload Full-Body Picture'}
+              {profilePicture ? t('changePic') : t('uploadPic')}
             </Text>
           </TouchableOpacity>
           {profilePicture && (
@@ -402,8 +498,8 @@ export default function DoulaRegistrationScreen() {
         </View>
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>Certification Documents</Text>
-          <Text style={styles.helperText}>Upload up to 7 documents (PDF, JPEG, PNG)</Text>
+          <Text style={commonStyles.subtitle}>{t('certDocs')}</Text>
+          <Text style={styles.helperText}>{t('docsHelper')}</Text>
           <TouchableOpacity style={styles.uploadButton} onPress={pickCertificationDocuments}>
             <IconSymbol
               ios_icon_name="document"
@@ -411,7 +507,7 @@ export default function DoulaRegistrationScreen() {
               size={24}
               color={colors.primary}
             />
-            <Text style={styles.uploadButtonText}>Upload Documents</Text>
+            <Text style={styles.uploadButtonText}>{t('uploadDocs')}</Text>
           </TouchableOpacity>
           {certificationDocuments.map((doc, index) => (
             <View key={index} style={styles.documentItem}>
@@ -431,12 +527,12 @@ export default function DoulaRegistrationScreen() {
         </View>
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>Referees</Text>
-          <Text style={styles.helperText}>Add up to 3 referees</Text>
+          <Text style={commonStyles.subtitle}>{t('referees')}</Text>
+          <Text style={styles.helperText}>{t('refereesHelper')}</Text>
           {referees.map((referee, index) => (
             <View key={index} style={styles.refereeContainer}>
               <View style={styles.refereeHeader}>
-                <Text style={commonStyles.label}>Referee {index + 1}</Text>
+                <Text style={commonStyles.label}>{t('referee')} {index + 1}</Text>
                 {referees.length > 1 && (
                   <TouchableOpacity onPress={() => removeReferee(index)}>
                     <IconSymbol
@@ -452,21 +548,21 @@ export default function DoulaRegistrationScreen() {
                 style={commonStyles.input}
                 value={referee.firstName}
                 onChangeText={(text) => updateReferee(index, 'firstName', text)}
-                placeholder="First name"
+                placeholder={t('firstName')}
                 placeholderTextColor={colors.textSecondary}
               />
               <TextInput
                 style={commonStyles.input}
                 value={referee.lastName}
                 onChangeText={(text) => updateReferee(index, 'lastName', text)}
-                placeholder="Last name"
+                placeholder={t('lastName')}
                 placeholderTextColor={colors.textSecondary}
               />
               <TextInput
                 style={commonStyles.input}
                 value={referee.email}
                 onChangeText={(text) => updateReferee(index, 'email', text)}
-                placeholder="Email address"
+                placeholder="Email"
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -475,28 +571,21 @@ export default function DoulaRegistrationScreen() {
           ))}
           {referees.length < 3 && (
             <TouchableOpacity style={commonStyles.outlineButton} onPress={addReferee}>
-              <Text style={commonStyles.outlineButtonText}>Add Referee</Text>
+              <Text style={commonStyles.outlineButtonText}>{t('addReferee')}</Text>
             </TouchableOpacity>
           )}
         </View>
 
         <View style={commonStyles.card}>
           <CheckboxItem
-            label="I accept the terms and conditions of platform use *"
+            label={`${t('terms')} *`}
             checked={acceptedTerms}
             onPress={() => setAcceptedTerms(!acceptedTerms)}
           />
         </View>
 
         <TouchableOpacity style={commonStyles.button} onPress={handleSubmit}>
-          <Text style={commonStyles.buttonText}>Continue to Payment</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={commonStyles.outlineButton}
-          onPress={() => router.back()}
-        >
-          <Text style={commonStyles.outlineButtonText}>Back</Text>
+          <Text style={commonStyles.buttonText}>{t('continue')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -507,10 +596,33 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 24,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  backButton: {
+    padding: 10,
+    marginLeft: -10,
+  },
   subtitle: {
     fontSize: 16,
     color: colors.textSecondary,
     marginBottom: 24,
+  },
+  emailBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 20,
+    gap: 8,
+  },
+  emailText: {
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: '500',
   },
   sliderContainer: {
     flexDirection: 'row',

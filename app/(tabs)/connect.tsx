@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '@/contexts/UserContext';
@@ -89,51 +90,77 @@ const mockParents: ParentProfile[] = [
 export default function ConnectScreen() {
   const { userProfile } = useUser();
   const [selectedProfile, setSelectedProfile] = useState<DoulaProfile | ParentProfile | null>(null);
+  const [matches, setMatches] = useState<(DoulaProfile | ParentProfile)[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const isParent = userProfile?.userType === 'parent';
 
-  // Filter matches based on criteria
-  const matches = useMemo(() => {
-    if (!userProfile) {
-      console.log('No user profile');
-      return [];
-    }
+  // Fetch matches from backend
+  useEffect(() => {
+    const fetchMatches = async () => {
+      if (!userProfile) {
+        console.log('[Connect] No user profile');
+        setLoading(false);
+        return;
+      }
 
-    if (isParent) {
-      // Parent sees doulas
-      const parentProfile = userProfile as ParentProfile;
-      return mockDoulas.filter((doula) => {
-        // Match service category
-        const categoryMatch = doula.serviceCategories.some((cat) =>
-          parentProfile.serviceCategories.includes(cat)
-        );
+      setLoading(true);
+      try {
+        console.log('[Connect] Fetching matches for user:', userProfile.id);
         
-        // Match payment preference
-        const paymentMatch = doula.paymentPreferences.some((pref) =>
-          parentProfile.financingType.includes(pref)
-        );
-
-        console.log('Doula match:', doula.firstName, 'category:', categoryMatch, 'payment:', paymentMatch);
-        return categoryMatch && paymentMatch;
-      });
-    } else {
-      // Doula sees parents
-      const doulaProfile = userProfile as DoulaProfile;
-      return mockParents.filter((parent) => {
-        // Match service category
-        const categoryMatch = parent.serviceCategories.some((cat) =>
-          doulaProfile.serviceCategories.includes(cat)
-        );
+        // Backend Integration: Fetch matches from API
+        // Note: This endpoint needs to be implemented on the backend
+        // Expected endpoint: GET /api/matches?userId={userId}&userType={userType}
+        // Expected response: { matches: Array<DoulaProfile | ParentProfile> }
         
-        // Match payment preference
-        const paymentMatch = parent.financingType.some((fin) =>
-          doulaProfile.paymentPreferences.includes(fin)
+        // For now, using mock implementation until backend endpoint is ready
+        // Uncomment below when backend is ready:
+        /*
+        const { apiGet } = await import('@/utils/api');
+        const response = await apiGet(
+          `/api/matches?userId=${userProfile.id}&userType=${userProfile.userType}`
         );
+        console.log('[Connect] Matches fetched:', response.matches.length);
+        setMatches(response.matches);
+        */
+        
+        // Mock implementation - filter local data
+        if (isParent) {
+          const parentProfile = userProfile as ParentProfile;
+          const filteredDoulas = mockDoulas.filter((doula) => {
+            const categoryMatch = doula.serviceCategories.some((cat) =>
+              parentProfile.serviceCategories.includes(cat)
+            );
+            const paymentMatch = doula.paymentPreferences.some((pref) =>
+              parentProfile.financingType.includes(pref)
+            );
+            console.log('[Connect] Doula match:', doula.firstName, 'category:', categoryMatch, 'payment:', paymentMatch);
+            return categoryMatch && paymentMatch;
+          });
+          setMatches(filteredDoulas);
+        } else {
+          const doulaProfile = userProfile as DoulaProfile;
+          const filteredParents = mockParents.filter((parent) => {
+            const categoryMatch = parent.serviceCategories.some((cat) =>
+              doulaProfile.serviceCategories.includes(cat)
+            );
+            const paymentMatch = parent.financingType.some((fin) =>
+              doulaProfile.paymentPreferences.includes(fin)
+            );
+            console.log('[Connect] Parent match:', parent.firstName, 'category:', categoryMatch, 'payment:', paymentMatch);
+            return categoryMatch && paymentMatch;
+          });
+          setMatches(filteredParents);
+        }
+      } catch (error) {
+        console.error('[Connect] Error fetching matches:', error);
+        setMatches([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-        console.log('Parent match:', parent.firstName, 'category:', categoryMatch, 'payment:', paymentMatch);
-        return categoryMatch && paymentMatch;
-      });
-    }
+    fetchMatches();
   }, [userProfile, isParent]);
 
   const renderDoulaCard = (doula: DoulaProfile) => (
@@ -309,6 +336,17 @@ export default function ConnectScreen() {
     );
   }
 
+  if (loading) {
+    return (
+      <SafeAreaView style={commonStyles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Finding matches...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={commonStyles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -424,5 +462,16 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 8,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginTop: 16,
   },
 });
