@@ -1,5 +1,5 @@
 /**
- * API Utilities Template
+ * API Utilities for Doula Connect
  *
  * Provides utilities for making API calls to the backend.
  * Automatically reads backend URL from app.json configuration.
@@ -17,6 +17,50 @@
  * 3. Use apiGet(), apiPost(), etc. for convenience
  * 4. Use authenticatedApiCall() for requests requiring auth (token auto-retrieved)
  * 5. Backend URL is automatically configured in app.json when backend deploys
+ *
+ * BACKEND API ENDPOINTS NEEDED:
+ * 
+ * Authentication:
+ * - POST /api/auth/send-otp
+ *   Body: { email: string }
+ *   Response: { success: boolean, message: string }
+ * 
+ * - POST /api/auth/verify-otp
+ *   Body: { email: string, otp: string }
+ *   Response: { success: boolean, verified: boolean, message: string }
+ * 
+ * User Registration:
+ * - POST /api/users/doula
+ *   Body: DoulaProfile object
+ *   Response: { success: boolean, userId: string, profile: DoulaProfile }
+ * 
+ * - POST /api/users/parent
+ *   Body: ParentProfile object
+ *   Response: { success: boolean, userId: string, profile: ParentProfile }
+ * 
+ * User Profile:
+ * - PUT /api/users/profile
+ *   Body: UserProfile object
+ *   Response: { success: boolean, profile: UserProfile }
+ *   Auth: Required
+ * 
+ * Matching:
+ * - GET /api/matches?userId={userId}&userType={userType}
+ *   Response: { matches: Array<DoulaProfile | ParentProfile> }
+ *   Auth: Required
+ * 
+ * Payments:
+ * - POST /api/payments/create-checkout-session
+ *   Body: { userId: string, userType: string, amount: number, period: string }
+ *   Response: { sessionId: string, checkoutUrl: string }
+ * 
+ * - GET /api/payments/status/:sessionId
+ *   Response: { status: 'pending' | 'completed' | 'failed' }
+ * 
+ * - PUT /api/users/subscription
+ *   Body: { userId: string, subscriptionActive: boolean }
+ *   Response: { success: boolean }
+ *   Auth: Required
  */
 
 import Constants from "expo-constants";
@@ -29,11 +73,16 @@ import * as SecureStore from "expo-secure-store";
  */
 export const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || "";
 
+// Log backend URL for debugging
+if (__DEV__) {
+  console.log('[API] Backend URL configured:', BACKEND_URL || 'NOT SET');
+}
+
 /**
  * Bearer token storage key
- * TODO: Replace "your-app" with actual app name to match auth-client.ts
+ * Matches the app name "doulaconnect" from app.json scheme
  */
-const BEARER_TOKEN_KEY = "your-app_bearer_token";
+const BEARER_TOKEN_KEY = "doulaconnect_bearer_token";
 
 /**
  * Check if backend is properly configured

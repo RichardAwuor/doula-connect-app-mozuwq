@@ -5,28 +5,38 @@ import { UserProfile, UserType, Language } from '@/types';
 interface UserContextType {
   userProfile: UserProfile | null;
   setUserProfile: (profile: UserProfile | null) => void;
-  selectedLanguage: Language;
-  setSelectedLanguage: (language: Language) => void;
-  selectedUserType: UserType | null;
-  setSelectedUserType: (type: UserType | null) => void;
+  language: Language;
+  setLanguage: (language: Language) => void;
+  userType: UserType | null;
+  setUserType: (type: UserType | null) => void;
+  userEmail: string | null;
+  setUserEmail: (email: string | null) => void;
+  isEmailVerified: boolean;
+  setIsEmailVerified: (verified: boolean) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [selectedLanguage, setSelectedLanguage] = useState<Language>('english');
-  const [selectedUserType, setSelectedUserType] = useState<UserType | null>(null);
+  const [language, setLanguage] = useState<Language>('en');
+  const [userType, setUserType] = useState<UserType | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isEmailVerified, setIsEmailVerified] = useState<boolean>(false);
 
   return (
     <UserContext.Provider
       value={{
         userProfile,
         setUserProfile,
-        selectedLanguage,
-        setSelectedLanguage,
-        selectedUserType,
-        setSelectedUserType,
+        language,
+        setLanguage,
+        userType,
+        setUserType,
+        userEmail,
+        setUserEmail,
+        isEmailVerified,
+        setIsEmailVerified,
       }}
     >
       {children}

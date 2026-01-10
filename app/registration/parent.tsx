@@ -16,6 +16,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useUser } from '@/contexts/UserContext';
 import { CheckboxItem } from '@/components/CheckboxItem';
 import { colors, commonStyles } from '@/styles/commonStyles';
+import { IconSymbol } from '@/components/IconSymbol';
 import {
   ServiceCategory,
   FinancingType,
@@ -26,7 +27,7 @@ import {
 
 export default function ParentRegistrationScreen() {
   const router = useRouter();
-  const { setUserProfile } = useUser();
+  const { userEmail, language, setUserProfile } = useUser();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -47,6 +48,40 @@ export default function ParentRegistrationScreen() {
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
+  const t = (key: string) => {
+    const translations: Record<string, Record<string, string>> = {
+      title: { en: 'New Parent Registration', es: 'Registro de Nuevo Padre' },
+      subtitle: { en: 'Complete your profile to connect with certified doulas', es: 'Complete su perfil para conectarse con doulas certificadas' },
+      personalInfo: { en: 'Personal Information', es: 'Información Personal' },
+      firstName: { en: 'First Name', es: 'Nombre' },
+      lastName: { en: 'Last Name', es: 'Apellido' },
+      state: { en: 'State', es: 'Estado' },
+      town: { en: 'Town', es: 'Ciudad' },
+      zipCode: { en: 'Zip Code', es: 'Código Postal' },
+      serviceReq: { en: 'Service Requirements', es: 'Requisitos del Servicio' },
+      serviceCategory: { en: 'Service Category', es: 'Categoría de Servicio' },
+      birthDoula: { en: 'Birth Doula', es: 'Doula de Parto' },
+      postpartumDoula: { en: 'Postpartum Doula', es: 'Doula Posparto' },
+      financingType: { en: 'Financing Type', es: 'Tipo de Financiamiento' },
+      selfPay: { en: 'Self/Out-Of-Pocket', es: 'Pago Propio' },
+      carrot: { en: 'CARROT Fertility', es: 'CARROT Fertility' },
+      medicaid: { en: 'Medicaid/MediCal', es: 'Medicaid/MediCal' },
+      servicePeriod: { en: 'Service Period', es: 'Período de Servicio' },
+      startDate: { en: 'Start Date', es: 'Fecha de Inicio' },
+      endDate: { en: 'End Date', es: 'Fecha de Fin' },
+      preferences: { en: 'Preferences', es: 'Preferencias' },
+      preferredLang: { en: 'Preferred Languages', es: 'Idiomas Preferidos' },
+      desiredDays: { en: 'Desired Service Days', es: 'Días de Servicio Deseados' },
+      desiredHours: { en: 'Desired Service Hours', es: 'Horas de Servicio Deseadas' },
+      startTime: { en: 'Start Time', es: 'Hora de Inicio' },
+      endTime: { en: 'End Time', es: 'Hora de Fin' },
+      terms: { en: 'I accept the terms and conditions of platform use', es: 'Acepto los términos y condiciones de uso de la plataforma' },
+      continue: { en: 'Continue to Payment', es: 'Continuar al Pago' },
+      back: { en: 'Back', es: 'Atrás' },
+    };
+    return translations[key]?.[language] || key;
+  };
+
   const toggleServiceCategory = (category: ServiceCategory) => {
     console.log('Toggle service category:', category);
     setServiceCategories((prev) =>
@@ -63,12 +98,12 @@ export default function ParentRegistrationScreen() {
     );
   };
 
-  const toggleLanguage = (language: SpokenLanguage) => {
-    console.log('Toggle language:', language);
+  const toggleLanguage = (lang: SpokenLanguage) => {
+    console.log('Toggle language:', lang);
     setPreferredLanguages((prev) =>
-      prev.includes(language)
-        ? prev.filter((l) => l !== language)
-        : [...prev, language]
+      prev.includes(lang)
+        ? prev.filter((l) => l !== lang)
+        : [...prev, lang]
     );
   };
 
@@ -79,8 +114,8 @@ export default function ParentRegistrationScreen() {
     );
   };
 
-  const handleSubmit = () => {
-    console.log('Submitting parent registration');
+  const handleSubmit = async () => {
+    console.log('[Registration] Submitting parent registration');
     
     if (!firstName || !lastName || !state || !town || !zipCode) {
       Alert.alert('Error', 'Please fill in all required fields');
@@ -105,6 +140,7 @@ export default function ParentRegistrationScreen() {
     const profile: ParentProfile = {
       id: Date.now().toString(),
       userType: 'parent',
+      email: userEmail || '',
       firstName,
       lastName,
       state,
@@ -122,112 +158,160 @@ export default function ParentRegistrationScreen() {
       subscriptionActive: false,
     };
 
-    console.log('Parent profile created:', profile);
-    setUserProfile(profile);
-    router.push('/payment');
+    console.log('[Registration] Parent profile created:', profile);
+
+    try {
+      // Backend Integration: Create parent profile in database
+      // Note: This endpoint needs to be implemented on the backend
+      // Expected endpoint: POST /api/users/parent
+      // Expected body: ParentProfile object
+      // Expected response: { success: boolean, userId: string, profile: ParentProfile }
+      
+      // For now, using local state until backend endpoint is ready
+      // Uncomment below when backend is ready:
+      /*
+      const { apiPost } = await import('@/utils/api');
+      const response = await apiPost('/api/users/parent', profile);
+      console.log('[Registration] Profile created:', response);
+      
+      if (response.profile) {
+        setUserProfile(response.profile);
+      }
+      */
+      
+      setUserProfile(profile);
+      router.push('/payment');
+    } catch (error) {
+      console.error('[Registration] Error creating profile:', error);
+      Alert.alert('Error', 'Failed to create profile. Please try again.');
+    }
   };
 
   return (
     <SafeAreaView style={commonStyles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={commonStyles.title}>New Parent Registration</Text>
-        <Text style={styles.subtitle}>
-          Complete your profile to connect with certified doulas
-        </Text>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <IconSymbol 
+              ios_icon_name="chevron.left" 
+              android_material_icon_name="arrow-back"
+              size={24}
+              color={colors.text}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={commonStyles.title}>{t('title')}</Text>
+        <Text style={styles.subtitle}>{t('subtitle')}</Text>
+
+        {userEmail && (
+          <View style={styles.emailBadge}>
+            <IconSymbol 
+              ios_icon_name="envelope.fill" 
+              android_material_icon_name="email"
+              size={16}
+              color={colors.primary}
+            />
+            <Text style={styles.emailText}>{userEmail}</Text>
+          </View>
+        )}
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>Personal Information</Text>
+          <Text style={commonStyles.subtitle}>{t('personalInfo')}</Text>
           
-          <Text style={commonStyles.label}>First Name *</Text>
+          <Text style={commonStyles.label}>{t('firstName')} *</Text>
           <TextInput
             style={commonStyles.input}
             value={firstName}
             onChangeText={setFirstName}
-            placeholder="Enter your first name"
+            placeholder={t('firstName')}
             placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={commonStyles.label}>Last Name *</Text>
+          <Text style={commonStyles.label}>{t('lastName')} *</Text>
           <TextInput
             style={commonStyles.input}
             value={lastName}
             onChangeText={setLastName}
-            placeholder="Enter your last name"
+            placeholder={t('lastName')}
             placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={commonStyles.label}>State *</Text>
+          <Text style={commonStyles.label}>{t('state')} *</Text>
           <TextInput
             style={commonStyles.input}
             value={state}
             onChangeText={setState}
-            placeholder="Enter your state"
+            placeholder={t('state')}
             placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={commonStyles.label}>Town *</Text>
+          <Text style={commonStyles.label}>{t('town')} *</Text>
           <TextInput
             style={commonStyles.input}
             value={town}
             onChangeText={setTown}
-            placeholder="Enter your town"
+            placeholder={t('town')}
             placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={commonStyles.label}>Zip Code *</Text>
+          <Text style={commonStyles.label}>{t('zipCode')} *</Text>
           <TextInput
             style={commonStyles.input}
             value={zipCode}
             onChangeText={setZipCode}
-            placeholder="Enter your zip code"
+            placeholder={t('zipCode')}
             placeholderTextColor={colors.textSecondary}
             keyboardType="numeric"
           />
         </View>
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>Service Requirements</Text>
+          <Text style={commonStyles.subtitle}>{t('serviceReq')}</Text>
           
-          <Text style={commonStyles.label}>Service Category *</Text>
+          <Text style={commonStyles.label}>{t('serviceCategory')} *</Text>
           <CheckboxItem
-            label="Birth Doula"
+            label={t('birthDoula')}
             checked={serviceCategories.includes('birth')}
             onPress={() => toggleServiceCategory('birth')}
           />
           <CheckboxItem
-            label="Postpartum Doula"
+            label={t('postpartumDoula')}
             checked={serviceCategories.includes('postpartum')}
             onPress={() => toggleServiceCategory('postpartum')}
           />
 
-          <Text style={[commonStyles.label, { marginTop: 16 }]}>Financing Type *</Text>
+          <Text style={[commonStyles.label, { marginTop: 16 }]}>{t('financingType')} *</Text>
           <CheckboxItem
-            label="Self/Out-Of-Pocket"
+            label={t('selfPay')}
             checked={financingTypes.includes('self')}
             onPress={() => toggleFinancingType('self')}
           />
           <CheckboxItem
-            label="CARROT Fertility"
+            label={t('carrot')}
             checked={financingTypes.includes('carrot')}
             onPress={() => toggleFinancingType('carrot')}
           />
           <CheckboxItem
-            label="Medicaid/MediCal"
+            label={t('medicaid')}
             checked={financingTypes.includes('medicaid')}
             onPress={() => toggleFinancingType('medicaid')}
           />
         </View>
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>Service Period</Text>
+          <Text style={commonStyles.subtitle}>{t('servicePeriod')}</Text>
           
-          <Text style={commonStyles.label}>Start Date</Text>
+          <Text style={commonStyles.label}>{t('startDate')}</Text>
           <TouchableOpacity
             style={commonStyles.input}
             onPress={() => setShowStartDatePicker(true)}
           >
             <Text style={{ color: servicePeriodStart ? colors.text : colors.textSecondary }}>
-              {servicePeriodStart ? servicePeriodStart.toLocaleDateString() : 'Select start date'}
+              {servicePeriodStart ? servicePeriodStart.toLocaleDateString() : t('startDate')}
             </Text>
           </TouchableOpacity>
           {showStartDatePicker && (
@@ -245,13 +329,13 @@ export default function ParentRegistrationScreen() {
             />
           )}
 
-          <Text style={commonStyles.label}>End Date</Text>
+          <Text style={commonStyles.label}>{t('endDate')}</Text>
           <TouchableOpacity
             style={commonStyles.input}
             onPress={() => setShowEndDatePicker(true)}
           >
             <Text style={{ color: servicePeriodEnd ? colors.text : colors.textSecondary }}>
-              {servicePeriodEnd ? servicePeriodEnd.toLocaleDateString() : 'Select end date'}
+              {servicePeriodEnd ? servicePeriodEnd.toLocaleDateString() : t('endDate')}
             </Text>
           </TouchableOpacity>
           {showEndDatePicker && (
@@ -271,9 +355,9 @@ export default function ParentRegistrationScreen() {
         </View>
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>Preferences</Text>
+          <Text style={commonStyles.subtitle}>{t('preferences')}</Text>
           
-          <Text style={commonStyles.label}>Preferred Languages</Text>
+          <Text style={commonStyles.label}>{t('preferredLang')}</Text>
           {(['English', 'Spanish', 'Chinese', 'Tagalog', 'Arabic', 'Hebrew', 'Vietnamese'] as SpokenLanguage[]).map((lang) => (
             <CheckboxItem
               key={lang}
@@ -283,7 +367,7 @@ export default function ParentRegistrationScreen() {
             />
           ))}
 
-          <Text style={[commonStyles.label, { marginTop: 16 }]}>Desired Service Days</Text>
+          <Text style={[commonStyles.label, { marginTop: 16 }]}>{t('desiredDays')}</Text>
           {(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as DayOfWeek[]).map((day) => (
             <CheckboxItem
               key={day}
@@ -293,14 +377,14 @@ export default function ParentRegistrationScreen() {
             />
           ))}
 
-          <Text style={[commonStyles.label, { marginTop: 16 }]}>Desired Service Hours</Text>
-          <Text style={commonStyles.label}>Start Time</Text>
+          <Text style={[commonStyles.label, { marginTop: 16 }]}>{t('desiredHours')}</Text>
+          <Text style={commonStyles.label}>{t('startTime')}</Text>
           <TouchableOpacity
             style={commonStyles.input}
             onPress={() => setShowStartTimePicker(true)}
           >
             <Text style={{ color: desiredStartTime ? colors.text : colors.textSecondary }}>
-              {desiredStartTime ? desiredStartTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Select start time'}
+              {desiredStartTime ? desiredStartTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : t('startTime')}
             </Text>
           </TouchableOpacity>
           {showStartTimePicker && (
@@ -318,13 +402,13 @@ export default function ParentRegistrationScreen() {
             />
           )}
 
-          <Text style={commonStyles.label}>End Time</Text>
+          <Text style={commonStyles.label}>{t('endTime')}</Text>
           <TouchableOpacity
             style={commonStyles.input}
             onPress={() => setShowEndTimePicker(true)}
           >
             <Text style={{ color: desiredEndTime ? colors.text : colors.textSecondary }}>
-              {desiredEndTime ? desiredEndTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Select end time'}
+              {desiredEndTime ? desiredEndTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : t('endTime')}
             </Text>
           </TouchableOpacity>
           {showEndTimePicker && (
@@ -345,21 +429,14 @@ export default function ParentRegistrationScreen() {
 
         <View style={commonStyles.card}>
           <CheckboxItem
-            label="I accept the terms and conditions of platform use *"
+            label={`${t('terms')} *`}
             checked={acceptedTerms}
             onPress={() => setAcceptedTerms(!acceptedTerms)}
           />
         </View>
 
         <TouchableOpacity style={commonStyles.button} onPress={handleSubmit}>
-          <Text style={commonStyles.buttonText}>Continue to Payment</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={commonStyles.outlineButton}
-          onPress={() => router.back()}
-        >
-          <Text style={commonStyles.outlineButtonText}>Back</Text>
+          <Text style={commonStyles.buttonText}>{t('continue')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -370,9 +447,32 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 24,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  backButton: {
+    padding: 10,
+    marginLeft: -10,
+  },
   subtitle: {
     fontSize: 16,
     color: colors.textSecondary,
     marginBottom: 24,
+  },
+  emailBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 20,
+    gap: 8,
+  },
+  emailText: {
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: '500',
   },
 });

@@ -117,11 +117,8 @@ export default function WelcomeScreen() {
       setLanguage(selectedLanguage);
       setUserType(selectedUserType);
       
-      if (selectedUserType === 'parent') {
-        router.push('/registration/parent');
-      } else {
-        router.push('/registration/doula');
-      }
+      // Navigate to email authentication
+      router.push('/auth/email');
     }
   };
 
@@ -148,7 +145,7 @@ export default function WelcomeScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Image 
-          source={require('@/assets/images/68efd62c-bf18-4501-be6c-954ddc8107fb.png')}
+          source={require('@/assets/images/853bfc62-f4e9-4600-9caa-9fd442be4362.png')}
           style={styles.logo}
         />
         
