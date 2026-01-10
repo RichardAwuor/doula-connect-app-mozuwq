@@ -75,3 +75,34 @@ export interface DoulaProfile {
 }
 
 export type UserProfile = ParentProfile | DoulaProfile;
+
+// Job Contract Types
+export interface JobContract {
+  id: string;
+  parentId: string;
+  doulaId: string;
+  startDate: Date;
+  endDate: Date | null;
+  status: 'active' | 'completed' | 'cancelled';
+  createdAt: Date;
+}
+
+// Comment Types
+export interface DoulaComment {
+  id: string;
+  contractId: string;
+  parentId: string;
+  doulaId: string;
+  parentName: string;
+  comment: string;
+  createdAt: Date;
+}
+
+// Comment Eligibility Response
+export interface CommentEligibility {
+  canComment: boolean;
+  contractId?: string;
+  daysUntilEligible?: number;
+  hasExistingComment?: boolean;
+  message: string;
+}
