@@ -18,6 +18,8 @@ import { useUser } from '@/contexts/UserContext';
 import { CheckboxItem } from '@/components/CheckboxItem';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors, commonStyles } from '@/styles/commonStyles';
+import DropdownPicker from '@/components/DropdownPicker';
+import { getStates, getCitiesByState, getZipCodesByState } from '@/constants/usLocations';
 import {
   ServiceCategory,
   FinancingType,
@@ -61,6 +63,9 @@ export default function DoulaRegistrationScreen() {
       state: { en: 'State', es: 'Estado' },
       town: { en: 'Town', es: 'Ciudad' },
       zipCode: { en: 'Zip Code', es: 'Código Postal' },
+      selectState: { en: 'Select State', es: 'Seleccionar Estado' },
+      selectTown: { en: 'Select Town', es: 'Seleccionar Ciudad' },
+      selectZip: { en: 'Select Zip Code', es: 'Seleccionar Código Postal' },
       driveDistance: { en: 'Preferred Drive Distance', es: 'Distancia de Conducción Preferida' },
       paymentServices: { en: 'Payment & Services', es: 'Pago y Servicios' },
       paymentPref: { en: 'Payment Preference', es: 'Preferencia de Pago' },
@@ -128,6 +133,14 @@ export default function DoulaRegistrationScreen() {
     setCertifications((prev) =>
       prev.includes(cert) ? prev.filter((c) => c !== cert) : [...prev, cert]
     );
+  };
+
+  const handleStateChange = (newState: string) => {
+    console.log('State changed:', newState);
+    setState(newState);
+    // Reset town and zip code when state changes
+    setTown('');
+    setZipCode('');
   };
 
   const pickProfilePicture = async () => {
@@ -329,31 +342,32 @@ export default function DoulaRegistrationScreen() {
           />
 
           <Text style={commonStyles.label}>{t('state')} *</Text>
-          <TextInput
-            style={commonStyles.input}
+          <DropdownPicker
+            options={getStates()}
             value={state}
-            onChangeText={setState}
-            placeholder={t('state')}
-            placeholderTextColor={colors.textSecondary}
+            onValueChange={handleStateChange}
+            placeholder={t('selectState')}
+            searchable={true}
           />
 
           <Text style={commonStyles.label}>{t('town')} *</Text>
-          <TextInput
-            style={commonStyles.input}
+          <DropdownPicker
+            options={getCitiesByState(state)}
             value={town}
-            onChangeText={setTown}
-            placeholder={t('town')}
-            placeholderTextColor={colors.textSecondary}
+            onValueChange={setTown}
+            placeholder={t('selectTown')}
+            searchable={true}
+            disabled={!state}
           />
 
           <Text style={commonStyles.label}>{t('zipCode')} *</Text>
-          <TextInput
-            style={commonStyles.input}
+          <DropdownPicker
+            options={getZipCodesByState(state)}
             value={zipCode}
-            onChangeText={setZipCode}
-            placeholder={t('zipCode')}
-            placeholderTextColor={colors.textSecondary}
-            keyboardType="numeric"
+            onValueChange={setZipCode}
+            placeholder={t('selectZip')}
+            searchable={true}
+            disabled={!state}
           />
 
           <Text style={commonStyles.label}>{t('driveDistance')}: {driveDistance} miles</Text>

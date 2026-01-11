@@ -17,6 +17,8 @@ import { useUser } from '@/contexts/UserContext';
 import { CheckboxItem } from '@/components/CheckboxItem';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
+import DropdownPicker from '@/components/DropdownPicker';
+import { getStates, getCitiesByState, getZipCodesByState } from '@/constants/usLocations';
 import {
   ServiceCategory,
   FinancingType,
@@ -58,6 +60,9 @@ export default function ParentRegistrationScreen() {
       state: { en: 'State', es: 'Estado' },
       town: { en: 'Town', es: 'Ciudad' },
       zipCode: { en: 'Zip Code', es: 'Código Postal' },
+      selectState: { en: 'Select State', es: 'Seleccionar Estado' },
+      selectTown: { en: 'Select Town', es: 'Seleccionar Ciudad' },
+      selectZip: { en: 'Select Zip Code', es: 'Seleccionar Código Postal' },
       serviceReq: { en: 'Service Requirements', es: 'Requisitos del Servicio' },
       serviceCategory: { en: 'Service Category', es: 'Categoría de Servicio' },
       birthDoula: { en: 'Birth Doula', es: 'Doula de Parto' },
@@ -112,6 +117,14 @@ export default function ParentRegistrationScreen() {
     setDesiredDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
+  };
+
+  const handleStateChange = (newState: string) => {
+    console.log('State changed:', newState);
+    setState(newState);
+    // Reset town and zip code when state changes
+    setTown('');
+    setZipCode('');
   };
 
   const handleSubmit = async () => {
@@ -241,31 +254,32 @@ export default function ParentRegistrationScreen() {
           />
 
           <Text style={commonStyles.label}>{t('state')} *</Text>
-          <TextInput
-            style={commonStyles.input}
+          <DropdownPicker
+            options={getStates()}
             value={state}
-            onChangeText={setState}
-            placeholder={t('state')}
-            placeholderTextColor={colors.textSecondary}
+            onValueChange={handleStateChange}
+            placeholder={t('selectState')}
+            searchable={true}
           />
 
           <Text style={commonStyles.label}>{t('town')} *</Text>
-          <TextInput
-            style={commonStyles.input}
+          <DropdownPicker
+            options={getCitiesByState(state)}
             value={town}
-            onChangeText={setTown}
-            placeholder={t('town')}
-            placeholderTextColor={colors.textSecondary}
+            onValueChange={setTown}
+            placeholder={t('selectTown')}
+            searchable={true}
+            disabled={!state}
           />
 
           <Text style={commonStyles.label}>{t('zipCode')} *</Text>
-          <TextInput
-            style={commonStyles.input}
+          <DropdownPicker
+            options={getZipCodesByState(state)}
             value={zipCode}
-            onChangeText={setZipCode}
-            placeholder={t('zipCode')}
-            placeholderTextColor={colors.textSecondary}
-            keyboardType="numeric"
+            onValueChange={setZipCode}
+            placeholder={t('selectZip')}
+            searchable={true}
+            disabled={!state}
           />
         </View>
 
