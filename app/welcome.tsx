@@ -145,7 +145,7 @@ export default function WelcomeScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Image 
-          source={require('@/assets/images/853bfc62-f4e9-4600-9caa-9fd442be4362.png')}
+          source={require('@/assets/images/2c7e0498-b523-4877-88ba-eae9afdb3794.png')}
           style={styles.logo}
         />
         

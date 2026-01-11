@@ -1,14 +1,15 @@
+
 {
   "expo": {
     "name": "Doula Connect",
     "slug": "Doula Connect",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/853bfc62-f4e9-4600-9caa-9fd442be4362.png",
+    "icon": "./assets/images/2c7e0498-b523-4877-88ba-eae9afdb3794.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/853bfc62-f4e9-4600-9caa-9fd442be4362.png",
+      "image": "./assets/images/2c7e0498-b523-4877-88ba-eae9afdb3794.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFF5F0"
     },
@@ -21,14 +22,14 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/853bfc62-f4e9-4600-9caa-9fd442be4362.png",
+        "foregroundImage": "./assets/images/2c7e0498-b523-4877-88ba-eae9afdb3794.png",
         "backgroundColor": "#FFF5F0"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.doulaconnect.app"
     },
     "web": {
-      "favicon": "./assets/images/853bfc62-f4e9-4600-9caa-9fd442be4362.png",
+      "favicon": "./assets/images/2c7e0498-b523-4877-88ba-eae9afdb3794.png",
       "bundler": "metro"
     },
     "plugins": [
