@@ -18,7 +18,7 @@ import { CheckboxItem } from '@/components/CheckboxItem';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { IconSymbol } from '@/components/IconSymbol';
 import DropdownPicker from '@/components/DropdownPicker';
-import { getStates, getCitiesByState, getZipCodesByState } from '@/constants/usLocations';
+import { getStates, getCitiesByState, getZipCodesByCity } from '@/constants/usLocations';
 import {
   ServiceCategory,
   FinancingType,
@@ -124,6 +124,13 @@ export default function ParentRegistrationScreen() {
     setState(newState);
     // Reset town and zip code when state changes
     setTown('');
+    setZipCode('');
+  };
+
+  const handleTownChange = (newTown: string) => {
+    console.log('Town changed:', newTown);
+    setTown(newTown);
+    // Reset zip code when town changes
     setZipCode('');
   };
 
@@ -266,7 +273,7 @@ export default function ParentRegistrationScreen() {
           <DropdownPicker
             options={getCitiesByState(state)}
             value={town}
-            onValueChange={setTown}
+            onValueChange={handleTownChange}
             placeholder={t('selectTown')}
             searchable={true}
             disabled={!state}
@@ -274,12 +281,12 @@ export default function ParentRegistrationScreen() {
 
           <Text style={commonStyles.label}>{t('zipCode')} *</Text>
           <DropdownPicker
-            options={getZipCodesByState(state)}
+            options={getZipCodesByCity(state, town)}
             value={zipCode}
             onValueChange={setZipCode}
             placeholder={t('selectZip')}
             searchable={true}
-            disabled={!state}
+            disabled={!town}
           />
         </View>
 
