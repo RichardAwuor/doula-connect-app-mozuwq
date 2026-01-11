@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Alert,
   Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -30,6 +31,7 @@ export default function PaymentScreen() {
 
   const handlePayment = async () => {
     console.log('[Payment] Processing payment for user:', userProfile.id);
+    console.log('[Payment] Platform:', Platform.OS);
     setProcessing(true);
 
     try {
@@ -103,16 +105,28 @@ export default function PaymentScreen() {
       }
       */
       
-      // Mock implementation for now
+      // Mock implementation for now - simulate payment
+      console.log('[Payment] Starting mock payment simulation');
       const stripeUrl = 'https://stripe.com';
       const canOpen = await Linking.canOpenURL(stripeUrl);
       
       if (canOpen) {
+        console.log('[Payment] Opening Stripe URL');
         await Linking.openURL(stripeUrl);
         
         // Simulate successful payment after a delay
         setTimeout(() => {
           console.log('[Payment] Payment successful (mock)');
+          console.log('[Payment] Updating user profile with subscription active');
+          
+          // Update the user profile first
+          const updatedProfile = {
+            ...userProfile,
+            subscriptionActive: true,
+          };
+          setUserProfile(updatedProfile);
+          console.log('[Payment] User profile updated:', updatedProfile);
+          
           Alert.alert(
             'Payment Successful',
             'Your subscription is now active!',
@@ -120,11 +134,16 @@ export default function PaymentScreen() {
               {
                 text: 'Continue',
                 onPress: () => {
-                  setUserProfile({
-                    ...userProfile,
-                    subscriptionActive: true,
-                  });
-                  router.replace('/(tabs)/connect');
+                  console.log('[Payment] Navigating to connect screen');
+                  console.log('[Payment] Current platform:', Platform.OS);
+                  
+                  // Use push instead of replace to ensure navigation works
+                  router.push('/(tabs)/connect');
+                  
+                  // Also try dismissing any modals that might be open
+                  if (router.canDismiss()) {
+                    router.dismissAll();
+                  }
                 },
               },
             ]

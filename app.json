@@ -1,8 +1,7 @@
-
 {
   "expo": {
     "name": "Doula Connect",
-    "slug": "doula-connect",
+    "slug": "Doula Connect",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/853bfc62-f4e9-4600-9caa-9fd442be4362.png",
@@ -44,5 +43,6 @@
     "extra": {
       "router": {}
     }
-  }
+  },
+  "scheme": "Doula Connect"
 }
