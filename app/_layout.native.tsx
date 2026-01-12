@@ -46,9 +46,14 @@ const DoulaTheme: Theme = {
 };
 
 function AppContent({ children }: { children: React.ReactNode }) {
+  if (!STRIPE_PUBLISHABLE_KEY) {
+    console.warn('⚠️ Stripe publishable key not configured');
+    return <>{children}</>;
+  }
+
   return (
     <StripeProvider
-      publishableKey={STRIPE_PUBLISHABLE_KEY || ""}
+      publishableKey={STRIPE_PUBLISHABLE_KEY}
       merchantIdentifier="merchant.com.doulaconnect.app"
     >
       {children}
@@ -59,17 +64,26 @@ function AppContent({ children }: { children: React.ReactNode }) {
 export default function RootLayout() {
   const { isConnected } = useNetworkState();
   const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
+  const [loaded, error] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"), // eslint-disable-line @typescript-eslint/no-require-imports
   });
 
   useEffect(() => {
+    if (error) {
+      console.error('Font loading error:', error);
+      // Hide splash screen even if fonts fail to load
+      SplashScreen.hideAsync();
+    }
+  }, [error]);
+
+  useEffect(() => {
     if (loaded) {
+      console.log('✅ Fonts loaded successfully');
       SplashScreen.hideAsync();
     }
   }, [loaded]);
 
-  if (!loaded) {
+  if (!loaded && !error) {
     return null;
   }
 

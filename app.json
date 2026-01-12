@@ -1,3 +1,4 @@
+
 {
   "expo": {
     "name": "Doula Connect",
@@ -7,6 +8,7 @@
     "icon": "./assets/images/2c7e0498-b523-4877-88ba-eae9afdb3794.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "scheme": "doulaconnect",
     "splash": {
       "image": "./assets/images/2c7e0498-b523-4877-88ba-eae9afdb3794.png",
       "resizeMode": "contain",
