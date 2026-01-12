@@ -38,21 +38,19 @@ export default function PaymentScreen() {
       const response = await apiPost('/api/payments/create-checkout-session', {
         userId: userProfile.id,
         userType: userProfile.userType,
-        amount: subscriptionFee * 100,
-        period: subscriptionPeriod.toLowerCase(),
+        email: userProfile.email,
       });
       
       console.log('[Payment Web] Checkout session created:', response);
 
-      if (response.url) {
+      if (response.success && response.checkoutUrl) {
         if (Platform.OS === 'web') {
-          window.location.href = response.url;
+          window.location.href = response.checkoutUrl;
         }
       } else {
         Alert.alert('Error', 'Failed to create checkout session');
+        setProcessing(false);
       }
-      
-      setProcessing(false);
     } catch (error) {
       console.error('[Payment Web] Error:', error);
       Alert.alert('Error', 'Failed to initialize payment. Please try again.');

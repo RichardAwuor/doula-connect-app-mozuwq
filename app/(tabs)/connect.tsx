@@ -99,10 +99,39 @@ export default function ConnectScreen() {
         for (const match of matches) {
           const doulaId = match.id;
           
-          // Fetch eligibility
+          // Fetch eligibility - check if there's a completed contract
           try {
-            const eligibilityResponse = await apiGet(`/api/contracts/comment-eligibility?parentId=${userProfile.id}&doulaId=${doulaId}`);
-            eligibilityMap[doulaId] = eligibilityResponse;
+            const contractsResponse = await apiGet(`/api/contracts/user/${userProfile.id}`);
+            const completedContract = contractsResponse.contracts?.find(
+              (c: any) => c.doulaId === doulaId && c.status === 'completed'
+            );
+            
+            if (completedContract) {
+              // Check if already commented
+              const commentsResponse = await apiGet(`/api/comments/doula/${doulaId}`);
+              const hasCommented = commentsResponse.comments?.some(
+                (c: any) => c.parentId === userProfile.id && c.contractId === completedContract.id
+              );
+              
+              if (hasCommented) {
+                eligibilityMap[doulaId] = {
+                  canComment: false,
+                  hasExistingComment: true,
+                  message: 'You have already commented on this contract',
+                };
+              } else {
+                eligibilityMap[doulaId] = {
+                  canComment: true,
+                  contractId: completedContract.id,
+                  message: 'You can leave a comment',
+                };
+              }
+            } else {
+              eligibilityMap[doulaId] = {
+                canComment: false,
+                message: 'Complete a contract to leave a comment',
+              };
+            }
           } catch (error) {
             console.error('[Connect] Error fetching eligibility for doula:', doulaId, error);
             eligibilityMap[doulaId] = {

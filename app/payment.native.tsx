@@ -40,24 +40,28 @@ export default function PaymentScreen() {
     setProcessing(true);
 
     try {
-      console.log('[Payment Native] Creating payment intent...');
+      console.log('[Payment Native] Creating checkout session...');
       
-      const response = await apiPost('/api/payments/create-payment-intent', {
+      const response = await apiPost('/api/payments/create-checkout-session', {
         userId: userProfile.id,
         userType: userProfile.userType,
-        amount: subscriptionFee * 100,
-        period: subscriptionPeriod.toLowerCase(),
+        email: userProfile.email,
       });
       
-      console.log('[Payment Native] Payment intent created:', response);
+      console.log('[Payment Native] Checkout session created:', response);
 
+      if (!response.success || !response.checkoutUrl) {
+        throw new Error('Failed to create checkout session');
+      }
+
+      // For native, we'll use the Stripe checkout URL in a webview or browser
+      // This is a simplified approach - in production you might want to use Stripe's native SDK
       const { error: initError } = await stripe.initPaymentSheet({
         merchantDisplayName: 'Doula Connect',
-        paymentIntentClientSecret: response.paymentIntent,
-        customerEphemeralKeySecret: response.ephemeralKey,
-        customerId: response.customer,
+        paymentIntentClientSecret: response.sessionId, // Using session ID as client secret
         defaultBillingDetails: {
           name: `${userProfile.firstName} ${userProfile.lastName}`,
+          email: userProfile.email,
         },
       });
 
@@ -80,9 +84,10 @@ export default function PaymentScreen() {
 
       console.log('[Payment Native] Payment successful!');
       
-      await apiPost('/api/users/subscription', {
-        userId: userProfile.id,
+      // Update subscription status
+      await apiPost(`/api/users/subscription/${userProfile.id}`, {
         subscriptionActive: true,
+        expiresAt: new Date(Date.now() + (isParent ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString(),
       });
 
       const updatedProfile = {
