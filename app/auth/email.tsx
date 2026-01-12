@@ -117,6 +117,19 @@ const styles = StyleSheet.create({
   resendButtonDisabled: {
     color: colors.textSecondary,
   },
+  errorText: {
+    fontSize: 14,
+    color: '#FF3B30',
+    marginTop: -10,
+    marginBottom: 20,
+  },
+  infoText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 10,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
 });
 
 export default function EmailAuthScreen() {
@@ -127,6 +140,7 @@ export default function EmailAuthScreen() {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+  const [error, setError] = useState('');
   const otpRefs = useRef<Array<TextInput | null>>([]);
 
   const t = (key: string) => {
@@ -140,13 +154,21 @@ export default function EmailAuthScreen() {
       resendCode: { en: 'Didn&apos;t receive the code?', es: '¿No recibiste el código?' },
       resend: { en: 'Resend', es: 'Reenviar' },
       startRegistration: { en: 'Start Registration', es: 'Iniciar registro' },
+      invalidEmail: { en: 'Please enter a valid email address', es: 'Por favor ingrese un correo válido' },
+      codeSent: { en: 'Verification code sent! Check your email.', es: 'Código enviado! Revisa tu correo.' },
+      invalidCode: { en: 'Please enter the complete 6-digit code', es: 'Por favor ingrese el código completo de 6 dígitos' },
+      checkSpam: { en: 'Check your spam folder if you don&apos;t see the email', es: 'Revisa tu carpeta de spam si no ves el correo' },
     };
     return translations[key]?.[language] || key;
   };
 
   const handleSendOTP = async () => {
-    if (!email || !email.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
+    // Clear previous errors
+    setError('');
+
+    // Validate email
+    if (!email || !email.includes('@') || !email.includes('.')) {
+      setError(t('invalidEmail'));
       return;
     }
 
@@ -155,7 +177,7 @@ export default function EmailAuthScreen() {
       console.log('[OTP] Sending OTP to:', email);
       
       const { apiPost } = await import('@/utils/api');
-      const response = await apiPost('/api/auth/send-otp', { email });
+      const response = await apiPost('/auth/send-otp', { email });
       console.log('[OTP] Response:', response);
       
       if (!response.success) {
@@ -176,16 +198,21 @@ export default function EmailAuthScreen() {
         });
       }, 1000);
       
-      Alert.alert('Success', 'Verification code sent to your email');
-    } catch (error) {
+      Alert.alert('Success', t('codeSent'));
+    } catch (error: any) {
       console.error('[OTP] Error sending OTP:', error);
-      Alert.alert('Error', 'Failed to send verification code. Please try again.');
+      const errorMessage = error?.message || 'Failed to send verification code. Please try again.';
+      setError(errorMessage);
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const handleOtpChange = (value: string, index: number) => {
+    // Clear error when user starts typing
+    if (error) setError('');
+
     if (value.length > 1) {
       value = value[value.length - 1];
     }
@@ -207,9 +234,12 @@ export default function EmailAuthScreen() {
   };
 
   const handleVerifyOTP = async () => {
+    // Clear previous errors
+    setError('');
+
     const otpCode = otp.join('');
     if (otpCode.length !== 6) {
-      Alert.alert('Error', 'Please enter the complete 6-digit code');
+      setError(t('invalidCode'));
       return;
     }
 
@@ -218,9 +248,9 @@ export default function EmailAuthScreen() {
       console.log('[OTP] Verifying OTP:', otpCode, 'for email:', email);
       
       const { apiPost } = await import('@/utils/api');
-      const response = await apiPost('/api/auth/verify-otp', { 
+      const response = await apiPost('/auth/verify-otp', { 
         email, 
-        otp: otpCode 
+        code: otpCode 
       });
       console.log('[OTP] Verification response:', response);
       
@@ -237,9 +267,15 @@ export default function EmailAuthScreen() {
       } else {
         router.push('/registration/doula');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[OTP] Error verifying OTP:', error);
-      Alert.alert('Error', 'Invalid verification code. Please try again.');
+      const errorMessage = error?.message || 'Invalid verification code. Please try again.';
+      setError(errorMessage);
+      Alert.alert('Error', errorMessage);
+      
+      // Clear OTP inputs on error
+      setOtp(['', '', '', '', '', '']);
+      otpRefs.current[0]?.focus();
     } finally {
       setLoading(false);
     }
@@ -275,11 +311,16 @@ export default function EmailAuthScreen() {
               placeholder={t('emailPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (error) setError('');
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              editable={!loading}
             />
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             <TouchableOpacity
               style={[styles.button, loading && styles.buttonDisabled]}
@@ -307,9 +348,11 @@ export default function EmailAuthScreen() {
                   keyboardType="number-pad"
                   maxLength={1}
                   selectTextOnFocus
+                  editable={!loading}
                 />
               ))}
             </View>
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             <TouchableOpacity
               style={[styles.button, loading && styles.buttonDisabled]}
@@ -328,16 +371,18 @@ export default function EmailAuthScreen() {
               <TouchableOpacity
                 style={styles.resendButton}
                 onPress={handleSendOTP}
-                disabled={resendTimer > 0}
+                disabled={resendTimer > 0 || loading}
               >
                 <Text style={[
                   styles.resendButtonText,
-                  resendTimer > 0 && styles.resendButtonDisabled
+                  (resendTimer > 0 || loading) && styles.resendButtonDisabled
                 ]}>
                   {resendTimer > 0 ? `${t('resend')} (${resendTimer}s)` : t('resend')}
                 </Text>
               </TouchableOpacity>
             </View>
+
+            <Text style={styles.infoText}>{t('checkSpam')}</Text>
           </>
         )}
       </ScrollView>
