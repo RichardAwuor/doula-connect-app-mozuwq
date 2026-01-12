@@ -19,14 +19,17 @@ import { Stack, router } from "expo-router";
 import "react-native-reanimated";
 import { colors } from "@/styles/commonStyles";
 import Constants from "expo-constants";
+import { StripeProvider } from "@stripe/stripe-react-native";
 
 SplashScreen.preventAutoHideAsync();
 
-// Log backend URL at startup for debugging
+// Log backend URL and Stripe key at startup for debugging
 const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl;
+const STRIPE_PUBLISHABLE_KEY = Constants.expoConfig?.extra?.stripePublishableKey;
 console.log('='.repeat(60));
 console.log('🚀 Doula Connect App Starting');
 console.log('📡 Backend URL:', BACKEND_URL || 'NOT CONFIGURED');
+console.log('💳 Stripe Key:', STRIPE_PUBLISHABLE_KEY ? 'CONFIGURED' : 'NOT CONFIGURED');
 console.log('='.repeat(60));
 
 const DoulaTheme: Theme = {
@@ -61,23 +64,28 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={DoulaTheme}>
-        <WidgetProvider>
-          <UserProvider>
-            <SystemBars style="auto" />
-            <StatusBar style="auto" />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="welcome" />
-              <Stack.Screen name="auth/email" />
-              <Stack.Screen name="registration/parent" />
-              <Stack.Screen name="registration/doula" />
-              <Stack.Screen name="payment" />
-              <Stack.Screen name="(tabs)" />
-            </Stack>
-          </UserProvider>
-        </WidgetProvider>
-      </ThemeProvider>
+      <StripeProvider
+        publishableKey={STRIPE_PUBLISHABLE_KEY || ""}
+        merchantIdentifier="merchant.com.doulaconnect.app"
+      >
+        <ThemeProvider value={DoulaTheme}>
+          <WidgetProvider>
+            <UserProvider>
+              <SystemBars style="auto" />
+              <StatusBar style="auto" />
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="welcome" />
+                <Stack.Screen name="auth/email" />
+                <Stack.Screen name="registration/parent" />
+                <Stack.Screen name="registration/doula" />
+                <Stack.Screen name="payment" />
+                <Stack.Screen name="(tabs)" />
+              </Stack>
+            </UserProvider>
+          </WidgetProvider>
+        </ThemeProvider>
+      </StripeProvider>
     </GestureHandlerRootView>
   );
 }

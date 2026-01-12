@@ -41,7 +41,8 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "stripePublishableKey": "pk_test_51SodguPJPmopPXCSnya4Momrg5Vv6Y0pHulgGMhXZfr9AW78oR0lRhFjVLcbNXCs2pmzdDFNE1TRObBZ3qkcwnRy00UnFYdKk2"
     }
   },
   "scheme": "Doula Connect"
