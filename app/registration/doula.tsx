@@ -243,49 +243,108 @@ export default function DoulaRegistrationScreen() {
       return;
     }
 
-    const profile: DoulaProfile = {
-      id: Date.now().toString(),
-      userType: 'doula',
-      email: userEmail || '',
-      firstName,
-      lastName,
-      paymentPreferences,
-      state,
-      town,
-      zipCode,
-      driveDistance,
-      spokenLanguages,
-      hourlyRateMin: parseFloat(hourlyRateMin) || 0,
-      hourlyRateMax: parseFloat(hourlyRateMax) || 0,
-      serviceCategories,
-      certifications,
-      profilePicture,
-      certificationDocuments,
-      referees: referees.filter((r) => r.firstName && r.lastName && r.email),
-      acceptedTerms,
-      subscriptionActive: false,
-    };
-
-    console.log('[Registration] Doula profile created:', profile);
-
     try {
-      // Backend Integration: Create doula profile in database
-      // Note: This endpoint needs to be implemented on the backend
-      // Expected endpoint: POST /api/users/doula
-      // Expected body: DoulaProfile object
-      // Expected response: { success: boolean, userId: string, profile: DoulaProfile }
-      
-      // For now, using local state until backend endpoint is ready
-      // Uncomment below when backend is ready:
-      /*
       const { apiPost } = await import('@/utils/api');
-      const response = await apiPost('/api/users/doula', profile);
+      
+      // First, upload profile picture
+      console.log('[Registration] Uploading profile picture...');
+      const formData = new FormData();
+      formData.append('image', {
+        uri: profilePicture.uri,
+        name: profilePicture.name,
+        type: profilePicture.type,
+      } as any);
+      
+      const uploadResponse = await fetch(`${await import('@/utils/api').then(m => m.BACKEND_URL)}/api/upload/profile-picture`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload profile picture');
+      }
+      
+      const uploadData = await uploadResponse.json();
+      const profilePictureUrl = uploadData.url;
+      console.log('[Registration] Profile picture uploaded:', profilePictureUrl);
+      
+      // Upload certification documents if any
+      const certificationUrls: string[] = [];
+      for (const doc of certificationDocuments) {
+        console.log('[Registration] Uploading certification document:', doc.name);
+        const certFormData = new FormData();
+        certFormData.append('document', {
+          uri: doc.uri,
+          name: doc.name,
+          type: doc.type,
+        } as any);
+        
+        const certUploadResponse = await fetch(`${await import('@/utils/api').then(m => m.BACKEND_URL)}/api/upload/certification`, {
+          method: 'POST',
+          body: certFormData,
+        });
+        
+        if (certUploadResponse.ok) {
+          const certData = await certUploadResponse.json();
+          certificationUrls.push(certData.url);
+        }
+      }
+      
+      const registrationData = {
+        email: userEmail || '',
+        firstName,
+        lastName,
+        paymentPreferences,
+        state,
+        town,
+        zipCode,
+        driveDistance,
+        spokenLanguages,
+        hourlyRateMin: parseFloat(hourlyRateMin) || 0,
+        hourlyRateMax: parseFloat(hourlyRateMax) || 0,
+        serviceCategories,
+        certifications,
+        profilePictureUrl,
+        certificationDocuments: certificationUrls,
+        referees: referees.filter((r) => r.firstName && r.lastName && r.email),
+        acceptedTerms,
+      };
+      
+      console.log('[Registration] Sending registration data:', registrationData);
+      
+      const response = await apiPost('/api/users/doula', registrationData);
       console.log('[Registration] Profile created:', response);
       
-      if (response.profile) {
-        setUserProfile(response.profile);
+      if (!response.success) {
+        throw new Error('Failed to create profile');
       }
-      */
+      
+      // Create profile object with response data
+      const profile: DoulaProfile = {
+        id: response.userId,
+        userType: 'doula',
+        email: userEmail || '',
+        firstName,
+        lastName,
+        paymentPreferences,
+        state,
+        town,
+        zipCode,
+        driveDistance,
+        spokenLanguages,
+        hourlyRateMin: parseFloat(hourlyRateMin) || 0,
+        hourlyRateMax: parseFloat(hourlyRateMax) || 0,
+        serviceCategories,
+        certifications,
+        profilePicture: { ...profilePicture, uri: profilePictureUrl },
+        certificationDocuments: certificationDocuments.map((doc, i) => ({
+          ...doc,
+          uri: certificationUrls[i] || doc.uri,
+        })),
+        referees: referees.filter((r) => r.firstName && r.lastName && r.email),
+        acceptedTerms,
+        subscriptionActive: false,
+      };
       
       setUserProfile(profile);
       router.push('/payment');

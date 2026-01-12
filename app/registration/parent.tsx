@@ -157,47 +157,57 @@ export default function ParentRegistrationScreen() {
       return;
     }
 
-    const profile: ParentProfile = {
-      id: Date.now().toString(),
-      userType: 'parent',
-      email: userEmail || '',
-      firstName,
-      lastName,
-      state,
-      town,
-      zipCode,
-      serviceCategories,
-      financingType: financingTypes,
-      servicePeriodStart,
-      servicePeriodEnd,
-      preferredLanguages,
-      desiredDays,
-      desiredStartTime,
-      desiredEndTime,
-      acceptedTerms,
-      subscriptionActive: false,
-    };
-
-    console.log('[Registration] Parent profile created:', profile);
-
     try {
-      // Backend Integration: Create parent profile in database
-      // Note: This endpoint needs to be implemented on the backend
-      // Expected endpoint: POST /api/users/parent
-      // Expected body: ParentProfile object
-      // Expected response: { success: boolean, userId: string, profile: ParentProfile }
-      
-      // For now, using local state until backend endpoint is ready
-      // Uncomment below when backend is ready:
-      /*
       const { apiPost } = await import('@/utils/api');
-      const response = await apiPost('/api/users/parent', profile);
+      
+      const registrationData = {
+        email: userEmail || '',
+        firstName,
+        lastName,
+        state,
+        town,
+        zipCode,
+        serviceCategories,
+        financingType: financingTypes,
+        servicePeriodStart: servicePeriodStart?.toISOString(),
+        servicePeriodEnd: servicePeriodEnd?.toISOString(),
+        preferredLanguages,
+        desiredDays,
+        desiredStartTime: desiredStartTime?.toISOString(),
+        desiredEndTime: desiredEndTime?.toISOString(),
+        acceptedTerms,
+      };
+      
+      console.log('[Registration] Sending registration data:', registrationData);
+      
+      const response = await apiPost('/api/users/parent', registrationData);
       console.log('[Registration] Profile created:', response);
       
-      if (response.profile) {
-        setUserProfile(response.profile);
+      if (!response.success) {
+        throw new Error('Failed to create profile');
       }
-      */
+      
+      // Create profile object with response data
+      const profile: ParentProfile = {
+        id: response.userId,
+        userType: 'parent',
+        email: userEmail || '',
+        firstName,
+        lastName,
+        state,
+        town,
+        zipCode,
+        serviceCategories,
+        financingType: financingTypes,
+        servicePeriodStart,
+        servicePeriodEnd,
+        preferredLanguages,
+        desiredDays,
+        desiredStartTime,
+        desiredEndTime,
+        acceptedTerms,
+        subscriptionActive: false,
+      };
       
       setUserProfile(profile);
       router.push('/payment');

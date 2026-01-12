@@ -40,54 +40,6 @@ export default function PaymentScreen() {
     setProcessing(true);
 
     try {
-      // Check if backend is configured
-      if (!BACKEND_URL) {
-        console.log('[Payment] Backend not configured, using mock payment');
-        // Mock implementation - simulate payment
-        const stripeUrl = 'https://stripe.com';
-        const canOpen = await Linking.canOpenURL(stripeUrl);
-        
-        if (canOpen) {
-          console.log('[Payment] Opening Stripe URL');
-          await Linking.openURL(stripeUrl);
-          
-          // Simulate successful payment after a delay
-          setTimeout(() => {
-            console.log('[Payment] Payment successful (mock)');
-            const updatedProfile = {
-              ...userProfile,
-              subscriptionActive: true,
-            };
-            setUserProfile(updatedProfile);
-            
-            Alert.alert(
-              'Payment Successful',
-              'Your subscription is now active!',
-              [
-                {
-                  text: 'Continue',
-                  onPress: () => {
-                    router.push('/(tabs)/connect');
-                    if (router.canDismiss()) {
-                      router.dismissAll();
-                    }
-                  },
-                },
-              ]
-            );
-            setProcessing(false);
-          }, 2000);
-        } else {
-          Alert.alert('Error', 'Unable to open payment page');
-          setProcessing(false);
-        }
-        return;
-      }
-
-      // TODO: Backend Integration - POST /api/payments/create-payment-intent
-      // Body: { userId: string, userType: string, amount: number, period: string }
-      // Response: { paymentIntent: string, ephemeralKey: string, customer: string }
-      
       console.log('[Payment] Creating payment intent...');
       const { apiPost } = await import('@/utils/api');
       
@@ -131,10 +83,6 @@ export default function PaymentScreen() {
 
       // Payment successful
       console.log('[Payment] Payment successful!');
-      
-      // TODO: Backend Integration - PUT /api/users/subscription
-      // Body: { userId: string, subscriptionActive: boolean }
-      // Response: { success: boolean }
       
       await apiPost('/api/users/subscription', {
         userId: userProfile.id,

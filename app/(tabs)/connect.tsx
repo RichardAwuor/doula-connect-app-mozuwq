@@ -19,102 +19,7 @@ import { IconSymbol } from '@/components/IconSymbol';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { DoulaProfile, ParentProfile, DoulaComment, CommentEligibility } from '@/types';
 
-// Mock data for demonstration
-const mockDoulas: DoulaProfile[] = [
-  {
-    id: '1',
-    userType: 'doula',
-    email: 'maria@example.com',
-    firstName: 'Maria',
-    lastName: 'Rodriguez',
-    paymentPreferences: ['self', 'carrot'],
-    state: 'California',
-    town: 'Los Angeles',
-    zipCode: '90001',
-    driveDistance: 50,
-    spokenLanguages: ['English', 'Spanish'],
-    hourlyRateMin: 35,
-    hourlyRateMax: 55,
-    serviceCategories: ['birth', 'postpartum'],
-    certifications: ['doula_certification', 'basic_life_support', 'covid_immunization'],
-    profilePicture: { uri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330', name: 'profile.jpg', type: 'image/jpeg', size: 0 },
-    certificationDocuments: [],
-    referees: [],
-    acceptedTerms: true,
-    subscriptionActive: true,
-    rating: 4.8,
-    reviewCount: 24,
-  },
-  {
-    id: '2',
-    userType: 'doula',
-    email: 'sarah@example.com',
-    firstName: 'Sarah',
-    lastName: 'Johnson',
-    paymentPreferences: ['medicaid', 'self'],
-    state: 'California',
-    town: 'San Diego',
-    zipCode: '92101',
-    driveDistance: 40,
-    spokenLanguages: ['English'],
-    hourlyRateMin: 40,
-    hourlyRateMax: 60,
-    serviceCategories: ['postpartum'],
-    certifications: ['doula_certification', 'infant_sleep', 'liability_insurance'],
-    profilePicture: { uri: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80', name: 'profile.jpg', type: 'image/jpeg', size: 0 },
-    certificationDocuments: [],
-    referees: [],
-    acceptedTerms: true,
-    subscriptionActive: true,
-    rating: 4.9,
-    reviewCount: 31,
-  },
-];
-
-const mockParents: ParentProfile[] = [
-  {
-    id: '1',
-    userType: 'parent',
-    email: 'jennifer@example.com',
-    firstName: 'Jennifer',
-    lastName: 'Smith',
-    state: 'California',
-    town: 'Los Angeles',
-    zipCode: '90002',
-    serviceCategories: ['postpartum'],
-    financingType: ['carrot'],
-    servicePeriodStart: new Date('2025-02-01'),
-    servicePeriodEnd: new Date('2025-05-01'),
-    preferredLanguages: ['English'],
-    desiredDays: ['Monday', 'Wednesday', 'Friday'],
-    desiredStartTime: new Date('2025-01-01T09:00:00'),
-    desiredEndTime: new Date('2025-01-01T17:00:00'),
-    acceptedTerms: true,
-    subscriptionActive: true,
-  },
-];
-
-// Mock comments data
-const mockComments: DoulaComment[] = [
-  {
-    id: '1',
-    contractId: 'contract-1',
-    parentId: 'parent-1',
-    doulaId: '1',
-    parentName: 'Jennifer S.',
-    comment: 'Maria was absolutely wonderful! She provided excellent support during our postpartum period. Highly recommend!',
-    createdAt: new Date('2024-12-15'),
-  },
-  {
-    id: '2',
-    contractId: 'contract-2',
-    parentId: 'parent-2',
-    doulaId: '1',
-    parentName: 'Emily R.',
-    comment: 'Very professional and caring. Made our transition to parenthood so much easier.',
-    createdAt: new Date('2024-11-20'),
-  },
-];
+// No mock data - using actual API calls
 
 export default function ConnectScreen() {
   const { userProfile } = useUser();
@@ -144,37 +49,27 @@ export default function ConnectScreen() {
       try {
         console.log('[Connect] Fetching matches for user:', userProfile.id);
         
-        // TODO: Backend Integration - Fetch matches from API
-        // Expected endpoint: GET /api/matches?userId={userId}&userType={userType}
-        // Expected response: { matches: Array<DoulaProfile | ParentProfile> }
+        const { apiGet } = await import('@/utils/api');
+        const response = await apiGet(`/api/matches?userId=${userProfile.id}&userType=${userProfile.userType}`);
+        console.log('[Connect] Matches response:', response);
         
-        // Mock implementation - filter local data
-        if (isParent) {
-          const parentProfile = userProfile as ParentProfile;
-          const filteredDoulas = mockDoulas.filter((doula) => {
-            const categoryMatch = doula.serviceCategories.some((cat) =>
-              parentProfile.serviceCategories.includes(cat)
-            );
-            const paymentMatch = doula.paymentPreferences.some((pref) =>
-              parentProfile.financingType.includes(pref)
-            );
-            console.log('[Connect] Doula match:', doula.firstName, 'category:', categoryMatch, 'payment:', paymentMatch);
-            return categoryMatch && paymentMatch;
+        if (response.matches) {
+          // Convert date strings back to Date objects
+          const processedMatches = response.matches.map((match: any) => {
+            if (match.userType === 'parent') {
+              return {
+                ...match,
+                servicePeriodStart: match.servicePeriodStart ? new Date(match.servicePeriodStart) : null,
+                servicePeriodEnd: match.servicePeriodEnd ? new Date(match.servicePeriodEnd) : null,
+                desiredStartTime: match.desiredStartTime ? new Date(match.desiredStartTime) : null,
+                desiredEndTime: match.desiredEndTime ? new Date(match.desiredEndTime) : null,
+              };
+            }
+            return match;
           });
-          setMatches(filteredDoulas);
+          setMatches(processedMatches);
         } else {
-          const doulaProfile = userProfile as DoulaProfile;
-          const filteredParents = mockParents.filter((parent) => {
-            const categoryMatch = parent.serviceCategories.some((cat) =>
-              doulaProfile.serviceCategories.includes(cat)
-            );
-            const paymentMatch = parent.financingType.some((fin) =>
-              doulaProfile.paymentPreferences.includes(fin)
-            );
-            console.log('[Connect] Parent match:', parent.firstName, 'category:', categoryMatch, 'payment:', paymentMatch);
-            return categoryMatch && paymentMatch;
-          });
-          setMatches(filteredParents);
+          setMatches([]);
         }
       } catch (error) {
         console.error('[Connect] Error fetching matches:', error);
@@ -197,38 +92,36 @@ export default function ConnectScreen() {
       try {
         console.log('[Connect] Fetching comment eligibility for doulas');
         
-        // TODO: Backend Integration - Check comment eligibility for each doula
-        // Expected endpoint: GET /api/contracts/comment-eligibility?parentId={parentId}&doulaId={doulaId}
-        // Expected response: CommentEligibility object
-        
-        // TODO: Backend Integration - Fetch existing comments for each doula
-        // Expected endpoint: GET /api/comments/doula/{doulaId}
-        // Expected response: { comments: DoulaComment[] }
-        
-        // Mock implementation
+        const { apiGet } = await import('@/utils/api');
         const eligibilityMap: Record<string, CommentEligibility> = {};
         const commentsMap: Record<string, DoulaComment[]> = {};
         
         for (const match of matches) {
           const doulaId = match.id;
           
-          // Mock eligibility - simulate that user can comment on first doula
-          if (doulaId === '1') {
-            eligibilityMap[doulaId] = {
-              canComment: true,
-              contractId: 'contract-123',
-              message: 'You can leave a comment for this doula',
-            };
-          } else {
+          // Fetch eligibility
+          try {
+            const eligibilityResponse = await apiGet(`/api/contracts/comment-eligibility?parentId=${userProfile.id}&doulaId=${doulaId}`);
+            eligibilityMap[doulaId] = eligibilityResponse;
+          } catch (error) {
+            console.error('[Connect] Error fetching eligibility for doula:', doulaId, error);
             eligibilityMap[doulaId] = {
               canComment: false,
-              daysUntilEligible: 3,
-              message: 'You can comment 3 days after contract start',
+              message: 'No active contract',
             };
           }
           
-          // Mock comments
-          commentsMap[doulaId] = mockComments.filter(c => c.doulaId === doulaId);
+          // Fetch existing comments
+          try {
+            const commentsResponse = await apiGet(`/api/comments/doula/${doulaId}`);
+            commentsMap[doulaId] = commentsResponse.comments.map((c: any) => ({
+              ...c,
+              createdAt: new Date(c.createdAt),
+            }));
+          } catch (error) {
+            console.error('[Connect] Error fetching comments for doula:', doulaId, error);
+            commentsMap[doulaId] = [];
+          }
         }
         
         setCommentEligibility(eligibilityMap);
@@ -247,10 +140,18 @@ export default function ConnectScreen() {
     try {
       console.log('[Connect] Starting contract with doula:', doulaId);
       
-      // TODO: Backend Integration - Create job contract
-      // Expected endpoint: POST /api/contracts
-      // Expected body: { parentId: string, doulaId: string, startDate: Date }
-      // Expected response: { success: boolean, contract: JobContract }
+      const { apiPost } = await import('@/utils/api');
+      const response = await apiPost('/api/contracts', {
+        parentId: userProfile.id,
+        doulaId: doulaId,
+        startDate: new Date().toISOString(),
+      });
+      
+      console.log('[Connect] Contract created:', response);
+      
+      if (!response.success) {
+        throw new Error('Failed to create contract');
+      }
       
       Alert.alert(
         'Contract Started',
@@ -264,6 +165,7 @@ export default function ConnectScreen() {
         [doulaId]: {
           canComment: false,
           daysUntilEligible: 7,
+          contractId: response.contract.id,
           message: 'You can comment in 7 days',
         },
       }));
@@ -294,20 +196,23 @@ export default function ConnectScreen() {
     try {
       console.log('[Connect] Submitting comment for doula:', doulaId);
       
-      // TODO: Backend Integration - Submit comment
-      // Expected endpoint: POST /api/comments
-      // Expected body: { contractId: string, doulaId: string, comment: string }
-      // Expected response: { success: boolean, comment: DoulaComment }
-      
-      // Mock implementation - add comment locally
-      const newComment: DoulaComment = {
-        id: `comment-${Date.now()}`,
-        contractId: eligibility.contractId || '',
-        parentId: userProfile.id,
+      const { apiPost } = await import('@/utils/api');
+      const response = await apiPost('/api/comments', {
+        contractId: eligibility.contractId,
         doulaId: doulaId,
-        parentName: `${userProfile.firstName} ${userProfile.lastName.charAt(0)}.`,
+        parentId: userProfile.id,
         comment: commentText,
-        createdAt: new Date(),
+      });
+      
+      console.log('[Connect] Comment submitted:', response);
+      
+      if (!response.success) {
+        throw new Error('Failed to submit comment');
+      }
+      
+      const newComment: DoulaComment = {
+        ...response.comment,
+        createdAt: new Date(response.comment.createdAt),
       };
       
       setDoulaComments(prev => ({

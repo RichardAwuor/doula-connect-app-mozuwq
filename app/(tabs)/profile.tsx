@@ -43,24 +43,49 @@ export default function ProfileScreen() {
   const handleSave = async () => {
     console.log('[Profile] Saving profile changes');
     
+    if (!userProfile) return;
+    
     try {
-      // Backend Integration: Update user profile in database
-      // Note: This endpoint needs to be implemented on the backend
-      // Expected endpoint: PUT /api/users/profile
-      // Expected body: UserProfile object
-      // Expected response: { success: boolean, profile: UserProfile }
+      const { apiPut } = await import('@/utils/api');
       
-      // For now, using mock implementation until backend endpoint is ready
-      // Uncomment below when backend is ready:
-      /*
-      const { authenticatedPut } = await import('@/utils/api');
-      const response = await authenticatedPut('/api/users/profile', userProfile);
+      // Prepare update data based on user type
+      const updateData = userProfile.userType === 'parent' 
+        ? {
+            firstName: userProfile.firstName,
+            lastName: userProfile.lastName,
+            state: userProfile.state,
+            town: userProfile.town,
+            zipCode: userProfile.zipCode,
+            serviceCategories: (userProfile as ParentProfile).serviceCategories,
+            financingType: (userProfile as ParentProfile).financingType,
+            servicePeriodStart: (userProfile as ParentProfile).servicePeriodStart?.toISOString(),
+            servicePeriodEnd: (userProfile as ParentProfile).servicePeriodEnd?.toISOString(),
+            preferredLanguages: (userProfile as ParentProfile).preferredLanguages,
+            desiredDays: (userProfile as ParentProfile).desiredDays,
+            desiredStartTime: (userProfile as ParentProfile).desiredStartTime?.toISOString(),
+            desiredEndTime: (userProfile as ParentProfile).desiredEndTime?.toISOString(),
+          }
+        : {
+            firstName: userProfile.firstName,
+            lastName: userProfile.lastName,
+            state: userProfile.state,
+            town: userProfile.town,
+            zipCode: userProfile.zipCode,
+            paymentPreferences: (userProfile as DoulaProfile).paymentPreferences,
+            driveDistance: (userProfile as DoulaProfile).driveDistance,
+            spokenLanguages: (userProfile as DoulaProfile).spokenLanguages,
+            hourlyRateMin: (userProfile as DoulaProfile).hourlyRateMin,
+            hourlyRateMax: (userProfile as DoulaProfile).hourlyRateMax,
+            serviceCategories: (userProfile as DoulaProfile).serviceCategories,
+            certifications: (userProfile as DoulaProfile).certifications,
+          };
+      
+      const response = await apiPut(`/api/users/profile/${userProfile.id}`, updateData);
       console.log('[Profile] Update response:', response);
       
-      if (response.profile) {
-        setUserProfile(response.profile);
+      if (!response.success) {
+        throw new Error('Failed to update profile');
       }
-      */
       
       setIsEditing(false);
       Alert.alert('Success', 'Profile updated successfully');

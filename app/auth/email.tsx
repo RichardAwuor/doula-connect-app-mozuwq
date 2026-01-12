@@ -154,22 +154,13 @@ export default function EmailAuthScreen() {
     try {
       console.log('[OTP] Sending OTP to:', email);
       
-      // Backend Integration: Send OTP to email via API
-      // Note: This endpoint needs to be implemented on the backend
-      // Expected endpoint: POST /api/auth/send-otp
-      // Expected body: { email: string }
-      // Expected response: { success: boolean, message: string }
-      
-      // For now, using mock implementation until backend endpoint is ready
-      // Uncomment below when backend is ready:
-      /*
       const { apiPost } = await import('@/utils/api');
       const response = await apiPost('/api/auth/send-otp', { email });
       console.log('[OTP] Response:', response);
-      */
       
-      // Simulate API call for now
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to send OTP');
+      }
       
       setOtpSent(true);
       setResendTimer(60);
@@ -226,15 +217,6 @@ export default function EmailAuthScreen() {
     try {
       console.log('[OTP] Verifying OTP:', otpCode, 'for email:', email);
       
-      // Backend Integration: Verify OTP via API
-      // Note: This endpoint needs to be implemented on the backend
-      // Expected endpoint: POST /api/auth/verify-otp
-      // Expected body: { email: string, otp: string }
-      // Expected response: { success: boolean, verified: boolean, message: string }
-      
-      // For now, using mock implementation until backend endpoint is ready
-      // Uncomment below when backend is ready:
-      /*
       const { apiPost } = await import('@/utils/api');
       const response = await apiPost('/api/auth/verify-otp', { 
         email, 
@@ -242,13 +224,9 @@ export default function EmailAuthScreen() {
       });
       console.log('[OTP] Verification response:', response);
       
-      if (!response.verified) {
-        throw new Error('Invalid OTP');
+      if (!response.success || !response.verified) {
+        throw new Error(response.message || 'Invalid OTP');
       }
-      */
-      
-      // Simulate API call for now
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
       setUserEmail(email);
       setIsEmailVerified(true);
