@@ -15,12 +15,14 @@ import { useUser } from '@/contexts/UserContext';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import Constants from 'expo-constants';
+import { useStripe } from '@stripe/stripe-react-native';
 import { apiPost } from '@/utils/api';
 
 export default function PaymentScreen() {
   const router = useRouter();
   const { userProfile, setUserProfile } = useUser();
   const [processing, setProcessing] = useState(false);
+  const stripe = useStripe();
 
   if (!userProfile) {
     return null;
@@ -29,33 +31,87 @@ export default function PaymentScreen() {
   const isParent = userProfile.userType === 'parent';
   const subscriptionFee = isParent ? 99 : 99;
   const subscriptionPeriod = isParent ? 'Annual' : 'Monthly';
+  const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl;
 
   const handlePayment = async () => {
-    console.log('[Payment Web] Opening Stripe Checkout...');
+    console.log('[Payment Native] Processing payment for user:', userProfile.id);
+    console.log('[Payment Native] Platform:', Platform.OS);
+    console.log('[Payment Native] Backend URL:', BACKEND_URL);
     setProcessing(true);
 
     try {
-      const response = await apiPost('/api/payments/create-checkout-session', {
+      console.log('[Payment Native] Creating payment intent...');
+      
+      const response = await apiPost('/api/payments/create-payment-intent', {
         userId: userProfile.id,
         userType: userProfile.userType,
         amount: subscriptionFee * 100,
         period: subscriptionPeriod.toLowerCase(),
       });
       
-      console.log('[Payment Web] Checkout session created:', response);
+      console.log('[Payment Native] Payment intent created:', response);
 
-      if (response.url) {
-        if (Platform.OS === 'web') {
-          window.location.href = response.url;
-        }
-      } else {
-        Alert.alert('Error', 'Failed to create checkout session');
+      const { error: initError } = await stripe.initPaymentSheet({
+        merchantDisplayName: 'Doula Connect',
+        paymentIntentClientSecret: response.paymentIntent,
+        customerEphemeralKeySecret: response.ephemeralKey,
+        customerId: response.customer,
+        defaultBillingDetails: {
+          name: `${userProfile.firstName} ${userProfile.lastName}`,
+        },
+      });
+
+      if (initError) {
+        console.error('[Payment Native] Error initializing payment sheet:', initError);
+        Alert.alert('Error', 'Failed to initialize payment. Please try again.');
+        setProcessing(false);
+        return;
       }
+
+      console.log('[Payment Native] Presenting payment sheet...');
+      const { error: presentError } = await stripe.presentPaymentSheet();
+
+      if (presentError) {
+        console.error('[Payment Native] Error presenting payment sheet:', presentError);
+        Alert.alert('Payment Cancelled', presentError.message);
+        setProcessing(false);
+        return;
+      }
+
+      console.log('[Payment Native] Payment successful!');
       
+      await apiPost('/api/users/subscription', {
+        userId: userProfile.id,
+        subscriptionActive: true,
+      });
+
+      const updatedProfile = {
+        ...userProfile,
+        subscriptionActive: true,
+      };
+      setUserProfile(updatedProfile);
+      console.log('[Payment Native] User profile updated:', updatedProfile);
+
+      Alert.alert(
+        'Payment Successful',
+        'Your subscription is now active!',
+        [
+          {
+            text: 'Continue',
+            onPress: () => {
+              console.log('[Payment Native] Navigating to connect screen');
+              router.push('/(tabs)/connect');
+              if (router.canDismiss()) {
+                router.dismissAll();
+              }
+            },
+          },
+        ]
+      );
       setProcessing(false);
     } catch (error) {
-      console.error('[Payment Web] Error:', error);
-      Alert.alert('Error', 'Failed to initialize payment. Please try again.');
+      console.error('[Payment Native] Payment error:', error);
+      Alert.alert('Error', 'Payment processing failed. Please try again.');
       setProcessing(false);
     }
   };
@@ -139,18 +195,6 @@ export default function PaymentScreen() {
               Secure payment processing powered by Stripe
             </Text>
           </View>
-        </View>
-
-        <View style={styles.webNotice}>
-          <IconSymbol
-            ios_icon_name="info.circle"
-            android_material_icon_name="info"
-            size={20}
-            color={colors.primary}
-          />
-          <Text style={styles.webNoticeText}>
-            You will be redirected to Stripe Checkout to complete your payment
-          </Text>
         </View>
 
         <TouchableOpacity
@@ -261,20 +305,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.success,
     fontWeight: '600',
-  },
-  webNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  webNoticeText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: colors.primary,
-    flex: 1,
   },
   buttonDisabled: {
     opacity: 0.6,

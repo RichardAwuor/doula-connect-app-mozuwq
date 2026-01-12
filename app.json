@@ -1,3 +1,4 @@
+
 {
   "expo": {
     "name": "Doula Connect",
@@ -36,7 +37,6 @@
       "expo-router",
       "expo-web-browser"
     ],
-    "scheme": "doulaconnect",
     "experiments": {
       "typedRoutes": true
     },
@@ -45,6 +45,5 @@
       "stripePublishableKey": "pk_test_51SodguPJPmopPXCSnya4Momrg5Vv6Y0pHulgGMhXZfr9AW78oR0lRhFjVLcbNXCs2pmzdDFNE1TRObBZ3qkcwnRy00UnFYdKk2",
       "backendUrl": "https://58wab47v29usdn5dvkdh2bb8tmk9hce6.app.specular.dev"
     }
-  },
-  "scheme": "Doula Connect"
+  }
 }
