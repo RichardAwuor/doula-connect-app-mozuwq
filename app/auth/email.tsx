@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -44,6 +44,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textSecondary,
     marginBottom: 30,
+    lineHeight: 22,
   },
   label: {
     fontSize: 16,
@@ -61,6 +62,14 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 20,
   },
+  inputError: {
+    borderColor: '#FF3B30',
+    borderWidth: 2,
+  },
+  inputSuccess: {
+    borderColor: '#34C759',
+    borderWidth: 2,
+  },
   button: {
     backgroundColor: colors.primary,
     paddingVertical: 15,
@@ -76,50 +85,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  otpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  otpInput: {
-    backgroundColor: colors.card,
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderRadius: 12,
-    width: 50,
-    height: 60,
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
-    textAlign: 'center',
-  },
-  otpInputFocused: {
-    borderColor: colors.primary,
-  },
-  resendContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  resendText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  resendButton: {
-    marginLeft: 5,
-  },
-  resendButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  resendButtonDisabled: {
-    color: colors.textSecondary,
-  },
   errorText: {
     fontSize: 14,
     color: '#FF3B30',
+    marginTop: -10,
+    marginBottom: 20,
+  },
+  successText: {
+    fontSize: 14,
+    color: '#34C759',
     marginTop: -10,
     marginBottom: 20,
   },
@@ -130,24 +104,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  debugContainer: {
-    marginTop: 20,
-    padding: 15,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
+  matchIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: -10,
+    marginBottom: 20,
   },
-  debugTitle: {
+  matchText: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  debugText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    lineHeight: 18,
+    marginLeft: 8,
   },
 });
 
@@ -155,217 +120,172 @@ export default function EmailAuthScreen() {
   const { language, userType, setUserEmail, setIsEmailVerified } = useUser();
   const router = useRouter();
   const [email, setEmail] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [confirmEmail, setConfirmEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resendTimer, setResendTimer] = useState(0);
   const [error, setError] = useState('');
-  const [debugInfo, setDebugInfo] = useState('');
-  const otpRefs = useRef<Array<TextInput | null>>([]);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [confirmEmailTouched, setConfirmEmailTouched] = useState(false);
 
   const t = (key: string) => {
     const translations: Record<string, Record<string, string>> = {
-      emailAuth: { en: 'Email Authentication', es: 'Autenticación de correo' },
-      enterEmail: { en: 'Enter your email address', es: 'Ingrese su dirección de correo' },
+      emailAuth: { en: 'Email Verification', es: 'Verificación de correo' },
+      enterEmail: { en: 'Enter your email address to continue with registration', es: 'Ingrese su dirección de correo para continuar con el registro' },
+      emailLabel: { en: 'Email Address', es: 'Dirección de correo' },
+      confirmEmailLabel: { en: 'Confirm Email Address', es: 'Confirmar dirección de correo' },
       emailPlaceholder: { en: 'your@email.com', es: 'tu@correo.com' },
-      sendCode: { en: 'Send Verification Code', es: 'Enviar código de verificación' },
-      verifyCode: { en: 'Verify Code', es: 'Verificar código' },
-      enterCode: { en: 'Enter the 6-digit code sent to your email', es: 'Ingrese el código de 6 dígitos enviado a su correo' },
-      resendCode: { en: 'Didn&apos;t receive the code?', es: '¿No recibiste el código?' },
-      resend: { en: 'Resend', es: 'Reenviar' },
-      startRegistration: { en: 'Start Registration', es: 'Iniciar registro' },
+      confirmEmailPlaceholder: { en: 'Re-enter your email', es: 'Vuelva a ingresar su correo' },
+      continue: { en: 'Continue to Registration', es: 'Continuar al registro' },
       invalidEmail: { en: 'Please enter a valid email address', es: 'Por favor ingrese un correo válido' },
-      codeSent: { en: 'Verification code sent! Check your email.', es: 'Código enviado! Revisa tu correo.' },
-      invalidCode: { en: 'Please enter the complete 6-digit code', es: 'Por favor ingrese el código completo de 6 dígitos' },
-      checkSpam: { en: 'Check your spam folder if you don&apos;t see the email', es: 'Revisa tu carpeta de spam si no ves el correo' },
-      errorSending: { en: 'Failed to send verification code. Please try again.', es: 'Error al enviar código. Intente de nuevo.' },
-      errorVerifying: { en: 'Invalid verification code. Please try again.', es: 'Código inválido. Intente de nuevo.' },
+      emailsDoNotMatch: { en: 'Email addresses do not match', es: 'Las direcciones de correo no coinciden' },
+      emailsMatch: { en: 'Email addresses match', es: 'Las direcciones de correo coinciden' },
+      fillBothFields: { en: 'Please fill in both email fields', es: 'Por favor complete ambos campos de correo' },
+      infoText: { en: 'Please enter your email address twice to confirm it is correct before proceeding to registration.', es: 'Por favor ingrese su dirección de correo dos veces para confirmar que es correcta antes de continuar con el registro.' },
     };
     return translations[key]?.[language] || key;
   };
 
-  const parseErrorMessage = (error: any): string => {
-    console.log('[OTP] Parsing error:', error);
-    
-    // If error is a string
-    if (typeof error === 'string') {
-      return error;
-    }
-    
-    // If error has a message property
-    if (error?.message) {
-      return error.message;
-    }
-    
-    // If error is an object with error property
-    if (error?.error) {
-      return error.error;
-    }
-    
-    return 'An unexpected error occurred. Please try again.';
-  };
-
-  const handleSendOTP = async () => {
-    // Clear previous errors and debug info
-    setError('');
-    setDebugInfo('');
-
-    // Validate email format
+  const validateEmail = (emailText: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email || !emailRegex.test(email)) {
-      setError(t('invalidEmail'));
-      return;
+    return emailRegex.test(emailText);
+  };
+
+  const handleEmailChange = (text: string) => {
+    setEmail(text);
+    setError('');
+    if (!emailTouched) {
+      setEmailTouched(true);
+    }
+  };
+
+  const handleConfirmEmailChange = (text: string) => {
+    setConfirmEmail(text);
+    setError('');
+    if (!confirmEmailTouched) {
+      setConfirmEmailTouched(true);
+    }
+  };
+
+  const getEmailInputStyle = () => {
+    if (!emailTouched || !email) {
+      return styles.input;
+    }
+    if (!validateEmail(email)) {
+      return [styles.input, styles.inputError];
+    }
+    return [styles.input, styles.inputSuccess];
+  };
+
+  const getConfirmEmailInputStyle = () => {
+    if (!confirmEmailTouched || !confirmEmail) {
+      return styles.input;
+    }
+    if (!validateEmail(confirmEmail)) {
+      return [styles.input, styles.inputError];
+    }
+    if (email !== confirmEmail) {
+      return [styles.input, styles.inputError];
+    }
+    return [styles.input, styles.inputSuccess];
+  };
+
+  const showMatchIndicator = () => {
+    if (!confirmEmailTouched || !confirmEmail || !email) {
+      return null;
     }
 
-    setLoading(true);
-    const startTime = Date.now();
+    const emailsMatch = email === confirmEmail && validateEmail(email) && validateEmail(confirmEmail);
+
+    if (emailsMatch) {
+      return (
+        <View style={styles.matchIndicator}>
+          <IconSymbol
+            ios_icon_name="checkmark.circle.fill"
+            android_material_icon_name="check-circle"
+            size={20}
+            color="#34C759"
+          />
+          <Text style={[styles.matchText, { color: '#34C759' }]}>
+            {t('emailsMatch')}
+          </Text>
+        </View>
+      );
+    } else {
+      return (
+        <View style={styles.matchIndicator}>
+          <IconSymbol
+            ios_icon_name="xmark.circle.fill"
+            android_material_icon_name="cancel"
+            size={20}
+            color="#FF3B30"
+          />
+          <Text style={[styles.matchText, { color: '#FF3B30' }]}>
+            {t('emailsDoNotMatch')}
+          </Text>
+        </View>
+      );
+    }
+  };
+
+  const handleContinue = async () => {
+    console.log('[Email Verification] Validating email confirmation');
     
-    try {
-      console.log('[OTP] Sending OTP to:', email);
-      console.log('[OTP] Request timestamp:', new Date().toISOString());
-      
-      const { apiPost } = await import('@/utils/api');
-      const response = await apiPost('/auth/send-otp', { email });
-      
-      const endTime = Date.now();
-      const duration = endTime - startTime;
-      
-      console.log('[OTP] Response received:', response);
-      console.log('[OTP] Response timestamp:', new Date().toISOString());
-      console.log('[OTP] Request duration:', duration, 'ms');
-      
-      // Set debug info for successful request
-      setDebugInfo(`Request completed in ${duration}ms\nEmail: ${email}\nResponse: ${JSON.stringify(response, null, 2)}`);
-      
-      if (!response.success) {
-        const errorMsg = response.message || response.error || 'Failed to send OTP';
-        console.error('[OTP] Backend returned error:', errorMsg);
-        throw new Error(errorMsg);
-      }
-      
-      console.log('[OTP] OTP sent successfully, expires in:', response.expiresIn, 'seconds');
-      setOtpSent(true);
-      setResendTimer(60);
-      
-      // Start countdown timer
-      const interval = setInterval(() => {
-        setResendTimer(prev => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      
-      Alert.alert('Success', t('codeSent'));
-    } catch (error: any) {
-      const endTime = Date.now();
-      const duration = endTime - startTime;
-      
-      console.error('[OTP] Error sending OTP:', error);
-      console.error('[OTP] Error type:', typeof error);
-      console.error('[OTP] Error details:', JSON.stringify(error, null, 2));
-      
-      const errorMessage = parseErrorMessage(error);
-      setError(errorMessage);
-      
-      // Set debug info for failed request
-      setDebugInfo(`Request failed after ${duration}ms\nEmail: ${email}\nError: ${errorMessage}\nFull error: ${JSON.stringify(error, null, 2)}`);
-      
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOtpChange = (value: string, index: number) => {
-    // Clear error when user starts typing
-    if (error) setError('');
-
-    if (value.length > 1) {
-      value = value[value.length - 1];
-    }
-
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-
-    // Auto-focus next input
-    if (value && index < 5) {
-      otpRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleOtpKeyPress = (key: string, index: number) => {
-    if (key === 'Backspace' && !otp[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleVerifyOTP = async () => {
     // Clear previous errors
     setError('');
-    setDebugInfo('');
 
-    const otpCode = otp.join('');
-    if (otpCode.length !== 6) {
-      setError(t('invalidCode'));
+    // Validate both fields are filled
+    if (!email || !confirmEmail) {
+      setError(t('fillBothFields'));
+      Alert.alert('Error', t('fillBothFields'));
+      return;
+    }
+
+    // Validate email format
+    if (!validateEmail(email)) {
+      setError(t('invalidEmail'));
+      Alert.alert('Error', t('invalidEmail'));
+      return;
+    }
+
+    // Validate emails match
+    if (email !== confirmEmail) {
+      setError(t('emailsDoNotMatch'));
+      Alert.alert('Error', t('emailsDoNotMatch'));
       return;
     }
 
     setLoading(true);
-    const startTime = Date.now();
     
     try {
-      console.log('[OTP] Verifying OTP:', otpCode, 'for email:', email);
+      console.log('[Email Verification] Email confirmed:', email);
       
-      const { apiPost } = await import('@/utils/api');
-      const response = await apiPost('/auth/verify-otp', { 
-        email, 
-        code: otpCode 
-      });
-      
-      const endTime = Date.now();
-      const duration = endTime - startTime;
-      
-      console.log('[OTP] Verification response:', response);
-      
-      // Set debug info for successful verification
-      setDebugInfo(`Verification completed in ${duration}ms\nEmail: ${email}\nCode: ${otpCode}\nResponse: ${JSON.stringify(response, null, 2)}`);
-      
-      if (!response.success) {
-        throw new Error(response.message || response.error || 'Invalid OTP');
-      }
-      
+      // Set email as verified in context
       setUserEmail(email);
       setIsEmailVerified(true);
       
-      // Navigate to registration
+      // Navigate to appropriate registration screen
       if (userType === 'parent') {
+        console.log('[Email Verification] Navigating to parent registration');
         router.push('/registration/parent');
       } else {
+        console.log('[Email Verification] Navigating to doula registration');
         router.push('/registration/doula');
       }
     } catch (error: any) {
-      const endTime = Date.now();
-      const duration = endTime - startTime;
-      
-      console.error('[OTP] Error verifying OTP:', error);
-      const errorMessage = parseErrorMessage(error);
-      setError(errorMessage);
-      
-      // Set debug info for failed verification
-      setDebugInfo(`Verification failed after ${duration}ms\nEmail: ${email}\nCode: ${otpCode}\nError: ${errorMessage}\nFull error: ${JSON.stringify(error, null, 2)}`);
-      
-      Alert.alert('Error', errorMessage);
-      
-      // Clear OTP inputs on error
-      setOtp(['', '', '', '', '', '']);
-      otpRefs.current[0]?.focus();
+      console.error('[Email Verification] Error:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const isFormValid = () => {
+    return (
+      email &&
+      confirmEmail &&
+      validateEmail(email) &&
+      validateEmail(confirmEmail) &&
+      email === confirmEmail
+    );
   };
 
   return (
@@ -386,111 +306,55 @@ export default function EmailAuthScreen() {
         </View>
 
         <Text style={styles.title}>{t('emailAuth')}</Text>
-        <Text style={styles.subtitle}>
-          {otpSent ? t('enterCode') : t('enterEmail')}
+        <Text style={styles.subtitle}>{t('enterEmail')}</Text>
+
+        <Text style={styles.label}>{t('emailLabel')} *</Text>
+        <TextInput
+          style={getEmailInputStyle()}
+          placeholder={t('emailPlaceholder')}
+          placeholderTextColor={colors.textSecondary}
+          value={email}
+          onChangeText={handleEmailChange}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!loading}
+          onBlur={() => setEmailTouched(true)}
+        />
+
+        <Text style={styles.label}>{t('confirmEmailLabel')} *</Text>
+        <TextInput
+          style={getConfirmEmailInputStyle()}
+          placeholder={t('confirmEmailPlaceholder')}
+          placeholderTextColor={colors.textSecondary}
+          value={confirmEmail}
+          onChangeText={handleConfirmEmailChange}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!loading}
+          onBlur={() => setConfirmEmailTouched(true)}
+        />
+
+        {showMatchIndicator()}
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <TouchableOpacity
+          style={[styles.button, (!isFormValid() || loading) && styles.buttonDisabled]}
+          onPress={handleContinue}
+          disabled={!isFormValid() || loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.buttonText}>{t('continue')}</Text>
+          )}
+        </TouchableOpacity>
+        
+        <Text style={styles.infoText}>
+          {t('infoText')}
         </Text>
-
-        {!otpSent ? (
-          <>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t('emailPlaceholder')}
-              placeholderTextColor={colors.textSecondary}
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (error) setError('');
-                if (debugInfo) setDebugInfo('');
-              }}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!loading}
-            />
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleSendOTP}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.buttonText}>{t('sendCode')}</Text>
-              )}
-            </TouchableOpacity>
-            
-            <Text style={styles.infoText}>
-              We&apos;ll send a 6-digit verification code to your email address. The code will expire in 10 minutes.
-            </Text>
-
-            {debugInfo ? (
-              <View style={styles.debugContainer}>
-                <Text style={styles.debugTitle}>Debug Information:</Text>
-                <Text style={styles.debugText}>{debugInfo}</Text>
-              </View>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <View style={styles.otpContainer}>
-              {otp.map((digit, index) => (
-                <TextInput
-                  key={index}
-                  ref={ref => otpRefs.current[index] = ref}
-                  style={styles.otpInput}
-                  value={digit}
-                  onChangeText={value => handleOtpChange(value, index)}
-                  onKeyPress={({ nativeEvent }) => handleOtpKeyPress(nativeEvent.key, index)}
-                  keyboardType="number-pad"
-                  maxLength={1}
-                  selectTextOnFocus
-                  editable={!loading}
-                />
-              ))}
-            </View>
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleVerifyOTP}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.buttonText}>{t('startRegistration')}</Text>
-              )}
-            </TouchableOpacity>
-
-            <View style={styles.resendContainer}>
-              <Text style={styles.resendText}>{t('resendCode')}</Text>
-              <TouchableOpacity
-                style={styles.resendButton}
-                onPress={handleSendOTP}
-                disabled={resendTimer > 0 || loading}
-              >
-                <Text style={[
-                  styles.resendButtonText,
-                  (resendTimer > 0 || loading) && styles.resendButtonDisabled
-                ]}>
-                  {resendTimer > 0 ? `${t('resend')} (${resendTimer}s)` : t('resend')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.infoText}>{t('checkSpam')}</Text>
-
-            {debugInfo ? (
-              <View style={styles.debugContainer}>
-                <Text style={styles.debugTitle}>Debug Information:</Text>
-                <Text style={styles.debugText}>{debugInfo}</Text>
-              </View>
-            ) : null}
-          </>
-        )}
       </ScrollView>
     </SafeAreaView>
   );

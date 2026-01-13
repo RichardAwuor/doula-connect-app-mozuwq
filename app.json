@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "Doula Connect",
-    "slug": "Doula Connect",
-    "version": "1.0.0",
+    "slug": "doula-connect-app-mozuwq",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/2c7e0498-b523-4877-88ba-eae9afdb3794.png",
     "userInterfaceStyle": "automatic",
@@ -26,7 +26,8 @@
         "backgroundColor": "#FFF5F0"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.doulaconnect.app"
+      "package": "com.simphoni.doula",
+      "versionCode": 5
     },
     "web": {
       "favicon": "./assets/images/2c7e0498-b523-4877-88ba-eae9afdb3794.png",
