@@ -197,22 +197,70 @@ export default function ConnectScreen() {
       
       Alert.alert(
         'Contract Started',
-        'Your contract has been started. Complete the contract to leave a comment.',
-        [{ text: 'OK' }]
+        'Your contract has been started. You can complete it when the service is finished.',
+        [
+          { 
+            text: 'OK',
+            onPress: () => {
+              // Refresh eligibility
+              setCommentEligibility(prev => ({
+                ...prev,
+                [doulaId]: {
+                  canComment: false,
+                  contractId: response.contractId,
+                  message: 'Complete the contract to leave a comment',
+                },
+              }));
+            }
+          },
+          {
+            text: 'Complete Now',
+            onPress: () => handleCompleteContract(response.contractId, doulaId),
+          }
+        ]
       );
-      
-      // Refresh eligibility
-      setCommentEligibility(prev => ({
-        ...prev,
-        [doulaId]: {
-          canComment: false,
-          contractId: response.contractId,
-          message: 'Complete the contract to leave a comment',
-        },
-      }));
     } catch (error: any) {
       console.error('[Connect] Error starting contract:', error);
       Alert.alert('Error', error.message || 'Failed to start contract. Please try again.');
+    }
+  };
+
+  const handleCompleteContract = async (contractId: string, doulaId: string) => {
+    if (!userProfile) return;
+
+    try {
+      console.log('[Connect] Completing contract:', contractId);
+      
+      const { apiPut } = await import('@/utils/api');
+      const response = await apiPut(`/contracts/${contractId}`, {
+        status: 'completed',
+        endDate: new Date().toISOString(),
+      });
+      
+      console.log('[Connect] Contract completed:', response);
+      
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to complete contract');
+      }
+      
+      Alert.alert(
+        'Contract Completed',
+        'You can now leave a comment about your experience!',
+        [{ text: 'OK' }]
+      );
+      
+      // Update eligibility to allow commenting
+      setCommentEligibility(prev => ({
+        ...prev,
+        [doulaId]: {
+          canComment: true,
+          contractId: contractId,
+          message: 'You can leave a comment',
+        },
+      }));
+    } catch (error: any) {
+      console.error('[Connect] Error completing contract:', error);
+      Alert.alert('Error', error.message || 'Failed to complete contract. Please try again.');
     }
   };
 

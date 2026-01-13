@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TextInput,
   Alert,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -16,11 +17,37 @@ import { useUser } from '@/contexts/UserContext';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { DoulaProfile, ParentProfile } from '@/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { userProfile, setUserProfile } = useUser();
   const [isEditing, setIsEditing] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
+  const [loadingSubscription, setLoadingSubscription] = useState(true);
+
+  // Fetch subscription status on mount
+  useEffect(() => {
+    const fetchSubscriptionStatus = async () => {
+      if (!userProfile) return;
+      
+      try {
+        console.log('[Profile] Fetching subscription status for user:', userProfile.id);
+        const { apiGet } = await import('@/utils/api');
+        const subscription = await apiGet(`/subscriptions/${userProfile.id}`);
+        console.log('[Profile] Subscription status:', subscription);
+        setSubscriptionStatus(subscription);
+      } catch (error: any) {
+        console.error('[Profile] Error fetching subscription:', error);
+        // If subscription not found, it means user hasn't subscribed yet
+        setSubscriptionStatus(null);
+      } finally {
+        setLoadingSubscription(false);
+      }
+    };
+
+    fetchSubscriptionStatus();
+  }, [userProfile]);
 
   if (!userProfile) {
     return (
@@ -100,7 +127,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     console.log('Logging out');
     Alert.alert(
       'Logout',
@@ -110,7 +137,12 @@ export default function ProfileScreen() {
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            // Clear user session from storage
+            await AsyncStorage.removeItem('doula_connect_user_id');
+            await AsyncStorage.removeItem('doula_connect_user_type');
+            console.log('[Profile] User session cleared from storage');
+            
             setUserProfile(null);
             router.replace('/welcome');
           },
@@ -357,21 +389,51 @@ export default function ProfileScreen() {
 
         <View style={commonStyles.card}>
           <Text style={commonStyles.subtitle}>Subscription</Text>
-          <View style={styles.subscriptionRow}>
-            <View style={styles.subscriptionInfo}>
-              <Text style={styles.subscriptionLabel}>Status:</Text>
-              <Text style={[styles.subscriptionValue, { color: colors.success }]}>Active</Text>
+          {loadingSubscription ? (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <ActivityIndicator size="small" color={colors.primary} />
             </View>
-            <View style={styles.subscriptionInfo}>
-              <Text style={styles.subscriptionLabel}>Type:</Text>
-              <Text style={styles.subscriptionValue}>
-                {isParent ? 'Annual' : 'Monthly'} - $99
+          ) : subscriptionStatus ? (
+            <>
+              <View style={styles.subscriptionRow}>
+                <View style={styles.subscriptionInfo}>
+                  <Text style={styles.subscriptionLabel}>Status:</Text>
+                  <Text style={[
+                    styles.subscriptionValue, 
+                    { color: subscriptionStatus.status === 'active' ? colors.success : colors.error }
+                  ]}>
+                    {subscriptionStatus.status.charAt(0).toUpperCase() + subscriptionStatus.status.slice(1)}
+                  </Text>
+                </View>
+                <View style={styles.subscriptionInfo}>
+                  <Text style={styles.subscriptionLabel}>Type:</Text>
+                  <Text style={styles.subscriptionValue}>
+                    {subscriptionStatus.planType === 'annual' ? 'Annual' : 'Monthly'} - $99
+                  </Text>
+                </View>
+              </View>
+              {subscriptionStatus.currentPeriodEnd && (
+                <Text style={styles.subscriptionNote}>
+                  Renews on: {new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString()}
+                </Text>
+              )}
+              <TouchableOpacity style={commonStyles.outlineButton}>
+                <Text style={commonStyles.outlineButtonText}>Manage Subscription</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.subscriptionNote}>
+                No active subscription found. Subscribe to access all features.
               </Text>
-            </View>
-          </View>
-          <TouchableOpacity style={commonStyles.outlineButton}>
-            <Text style={commonStyles.outlineButtonText}>Manage Subscription</Text>
-          </TouchableOpacity>
+              <TouchableOpacity 
+                style={commonStyles.button}
+                onPress={() => router.push('/payment')}
+              >
+                <Text style={commonStyles.buttonText}>Subscribe Now</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         {isEditing && (
@@ -480,6 +542,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
+  },
+  subscriptionNote: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 12,
   },
   emptyContainer: {
     flex: 1,

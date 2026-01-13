@@ -130,6 +130,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  debugContainer: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  debugTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  debugText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
 });
 
 export default function EmailAuthScreen() {
@@ -141,6 +160,7 @@ export default function EmailAuthScreen() {
   const [loading, setLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
   const [error, setError] = useState('');
+  const [debugInfo, setDebugInfo] = useState('');
   const otpRefs = useRef<Array<TextInput | null>>([]);
 
   const t = (key: string) => {
@@ -169,49 +189,16 @@ export default function EmailAuthScreen() {
     
     // If error is a string
     if (typeof error === 'string') {
-      // Check for common error patterns and provide helpful messages
-      if (error.includes('Failed to send OTP') || error.includes('Failed to send email')) {
-        return 'Unable to send verification email. Please check your email address and try again.';
-      }
-      if (error.includes('Email service not configured')) {
-        return 'Email service is temporarily unavailable. Please try again later.';
-      }
-      if (error.includes('Invalid email')) {
-        return 'Please enter a valid email address.';
-      }
       return error;
     }
     
     // If error has a message property
     if (error?.message) {
-      // Extract JSON error if present
-      const jsonMatch = error.message.match(/\{.*"error".*\}/);
-      if (jsonMatch) {
-        try {
-          const errorObj = JSON.parse(jsonMatch[0]);
-          const errorMsg = errorObj.error || errorObj.message || error.message;
-          // Apply same helpful message transformations
-          if (errorMsg.includes('Failed to send OTP') || errorMsg.includes('Failed to send email')) {
-            return 'Unable to send verification email. Please check your email address and try again.';
-          }
-          return errorMsg;
-        } catch (e) {
-          console.log('[OTP] Failed to parse JSON error:', e);
-        }
-      }
-      
-      // Apply helpful message transformations to raw message
-      if (error.message.includes('Failed to send OTP') || error.message.includes('Failed to send email')) {
-        return 'Unable to send verification email. Please check your email address and try again.';
-      }
       return error.message;
     }
     
     // If error is an object with error property
     if (error?.error) {
-      if (error.error.includes('Failed to send OTP') || error.error.includes('Failed to send email')) {
-        return 'Unable to send verification email. Please check your email address and try again.';
-      }
       return error.error;
     }
     
@@ -219,8 +206,9 @@ export default function EmailAuthScreen() {
   };
 
   const handleSendOTP = async () => {
-    // Clear previous errors
+    // Clear previous errors and debug info
     setError('');
+    setDebugInfo('');
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -230,14 +218,24 @@ export default function EmailAuthScreen() {
     }
 
     setLoading(true);
+    const startTime = Date.now();
+    
     try {
       console.log('[OTP] Sending OTP to:', email);
       console.log('[OTP] Request timestamp:', new Date().toISOString());
       
       const { apiPost } = await import('@/utils/api');
       const response = await apiPost('/auth/send-otp', { email });
+      
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
       console.log('[OTP] Response received:', response);
       console.log('[OTP] Response timestamp:', new Date().toISOString());
+      console.log('[OTP] Request duration:', duration, 'ms');
+      
+      // Set debug info for successful request
+      setDebugInfo(`Request completed in ${duration}ms\nEmail: ${email}\nResponse: ${JSON.stringify(response, null, 2)}`);
       
       if (!response.success) {
         const errorMsg = response.message || response.error || 'Failed to send OTP';
@@ -262,12 +260,19 @@ export default function EmailAuthScreen() {
       
       Alert.alert('Success', t('codeSent'));
     } catch (error: any) {
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
       console.error('[OTP] Error sending OTP:', error);
       console.error('[OTP] Error type:', typeof error);
       console.error('[OTP] Error details:', JSON.stringify(error, null, 2));
       
       const errorMessage = parseErrorMessage(error);
       setError(errorMessage);
+      
+      // Set debug info for failed request
+      setDebugInfo(`Request failed after ${duration}ms\nEmail: ${email}\nError: ${errorMessage}\nFull error: ${JSON.stringify(error, null, 2)}`);
+      
       Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
@@ -301,6 +306,7 @@ export default function EmailAuthScreen() {
   const handleVerifyOTP = async () => {
     // Clear previous errors
     setError('');
+    setDebugInfo('');
 
     const otpCode = otp.join('');
     if (otpCode.length !== 6) {
@@ -309,6 +315,8 @@ export default function EmailAuthScreen() {
     }
 
     setLoading(true);
+    const startTime = Date.now();
+    
     try {
       console.log('[OTP] Verifying OTP:', otpCode, 'for email:', email);
       
@@ -317,7 +325,14 @@ export default function EmailAuthScreen() {
         email, 
         code: otpCode 
       });
+      
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
       console.log('[OTP] Verification response:', response);
+      
+      // Set debug info for successful verification
+      setDebugInfo(`Verification completed in ${duration}ms\nEmail: ${email}\nCode: ${otpCode}\nResponse: ${JSON.stringify(response, null, 2)}`);
       
       if (!response.success) {
         throw new Error(response.message || response.error || 'Invalid OTP');
@@ -333,9 +348,16 @@ export default function EmailAuthScreen() {
         router.push('/registration/doula');
       }
     } catch (error: any) {
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
       console.error('[OTP] Error verifying OTP:', error);
       const errorMessage = parseErrorMessage(error);
       setError(errorMessage);
+      
+      // Set debug info for failed verification
+      setDebugInfo(`Verification failed after ${duration}ms\nEmail: ${email}\nCode: ${otpCode}\nError: ${errorMessage}\nFull error: ${JSON.stringify(error, null, 2)}`);
+      
       Alert.alert('Error', errorMessage);
       
       // Clear OTP inputs on error
@@ -379,6 +401,7 @@ export default function EmailAuthScreen() {
               onChangeText={(text) => {
                 setEmail(text);
                 if (error) setError('');
+                if (debugInfo) setDebugInfo('');
               }}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -402,6 +425,13 @@ export default function EmailAuthScreen() {
             <Text style={styles.infoText}>
               We&apos;ll send a 6-digit verification code to your email address. The code will expire in 10 minutes.
             </Text>
+
+            {debugInfo ? (
+              <View style={styles.debugContainer}>
+                <Text style={styles.debugTitle}>Debug Information:</Text>
+                <Text style={styles.debugText}>{debugInfo}</Text>
+              </View>
+            ) : null}
           </>
         ) : (
           <>
@@ -452,6 +482,13 @@ export default function EmailAuthScreen() {
             </View>
 
             <Text style={styles.infoText}>{t('checkSpam')}</Text>
+
+            {debugInfo ? (
+              <View style={styles.debugContainer}>
+                <Text style={styles.debugTitle}>Debug Information:</Text>
+                <Text style={styles.debugText}>{debugInfo}</Text>
+              </View>
+            ) : null}
           </>
         )}
       </ScrollView>

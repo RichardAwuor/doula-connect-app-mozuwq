@@ -211,6 +211,13 @@ export default function ParentRegistrationScreen() {
       };
       
       setUserProfile(profile);
+      
+      // Save user ID and type to storage for session restoration
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      await AsyncStorage.setItem('doula_connect_user_id', response.userId);
+      await AsyncStorage.setItem('doula_connect_user_type', 'parent');
+      console.log('[Registration] User session saved to storage');
+      
       router.push('/payment');
     } catch (error: any) {
       console.error('[Registration] Error creating parent profile:', error);

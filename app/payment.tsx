@@ -46,24 +46,39 @@ export default function PaymentScreen() {
 
       if (response.success && response.clientSecret) {
         // For web, you would integrate Stripe Elements here
-        // For now, just show success and update subscription status
-        Alert.alert(
-          'Payment Setup',
-          'Payment session created. In production, this would redirect to Stripe Checkout.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Update subscription status locally
-                setUserProfile({
-                  ...userProfile,
-                  subscriptionActive: true,
-                });
-                router.replace('/(tabs)/profile');
+        // For now, simulate successful payment and update subscription
+        console.log('[Payment] Simulating successful payment...');
+        
+        try {
+          // Update subscription status in backend
+          const { apiPut } = await import('@/utils/api');
+          await apiPut(`/subscriptions/${userProfile.id}`, {
+            status: 'active',
+          });
+          console.log('[Payment] Subscription status updated to active');
+          
+          // Update local profile
+          setUserProfile({
+            ...userProfile,
+            subscriptionActive: true,
+          });
+          
+          Alert.alert(
+            'Payment Successful',
+            'Your subscription is now active!',
+            [
+              {
+                text: 'Continue',
+                onPress: () => {
+                  router.replace('/(tabs)/connect');
+                }
               }
-            }
-          ]
-        );
+            ]
+          );
+        } catch (error: any) {
+          console.error('[Payment] Error updating subscription:', error);
+          Alert.alert('Error', 'Payment processed but failed to activate subscription. Please contact support.');
+        }
       } else {
         Alert.alert('Error', response.error || 'Failed to create payment session');
         setProcessing(false);
