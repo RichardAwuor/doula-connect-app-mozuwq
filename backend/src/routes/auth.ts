@@ -32,6 +32,10 @@ interface DoulaRegisterRequest extends RegisterRequest {
   hourlyRateMax: number;
   serviceCategories: string[]; // ['birth', 'postpartum']
   certifications: string[];
+  profilePictureUrl?: string;
+  certificationDocuments?: Array<{ url: string; type: string }>;
+  referees?: Array<{ firstName: string; lastName: string; email: string }>;
+  acceptedTerms?: boolean;
 }
 
 export function register(app: App, fastify: FastifyInstance) {
@@ -199,6 +203,29 @@ export function register(app: App, fastify: FastifyInstance) {
           hourlyRateMax: { type: 'number' },
           serviceCategories: { type: 'array', items: { type: 'string' } },
           certifications: { type: 'array', items: { type: 'string' } },
+          profilePictureUrl: { type: 'string' },
+          certificationDocuments: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                url: { type: 'string' },
+                type: { type: 'string' }
+              }
+            }
+          },
+          referees: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                firstName: { type: 'string' },
+                lastName: { type: 'string' },
+                email: { type: 'string' }
+              }
+            }
+          },
+          acceptedTerms: { type: 'boolean' },
         },
       },
       response: {
@@ -246,6 +273,10 @@ export function register(app: App, fastify: FastifyInstance) {
       hourlyRateMax,
       serviceCategories,
       certifications,
+      profilePictureUrl,
+      certificationDocuments,
+      referees,
+      acceptedTerms = false,
     } = request.body;
 
     // Validate input
@@ -327,6 +358,10 @@ export function register(app: App, fastify: FastifyInstance) {
             hourlyRateMax: hourlyRateMax.toString(),
             serviceCategories,
             certifications,
+            profilePictureUrl,
+            certificationDocuments,
+            referees,
+            acceptedTerms,
           });
 
         return newUser;

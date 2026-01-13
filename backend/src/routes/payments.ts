@@ -63,6 +63,7 @@ export function register(app: App, fastify: FastifyInstance) {
             success: { type: 'boolean' },
             sessionId: { type: 'string' },
             clientSecret: { type: 'string' },
+            checkoutUrl: { type: 'string' },
           },
         },
         400: {
@@ -138,6 +139,7 @@ export function register(app: App, fastify: FastifyInstance) {
         success: true,
         sessionId: session.id,
         clientSecret: session.client_secret,
+        checkoutUrl: session.url,
       });
     } catch (error) {
       app.logger.error(`Error creating payment session: ${error instanceof Error ? error.message : String(error)}`);
