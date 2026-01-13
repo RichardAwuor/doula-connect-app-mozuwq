@@ -47,32 +47,38 @@ export default function ConnectScreen() {
 
       setLoading(true);
       try {
-        // TODO: Backend Integration - Matching System Endpoint
-        // The backend needs to implement: GET /api/matches?userId={userId}&userType={userType}
-        // Response should return: { success: boolean, matches: Array<DoulaProfile | ParentProfile> }
-        // The matching algorithm should:
-        // - Match parents with doulas based on location, service categories, languages, etc.
-        // - Match doulas with parents based on their preferences
-        
         console.log('[Connect] Fetching matches for user:', userProfile.id);
         
         const { apiGet } = await import('@/utils/api');
-        const response = await apiGet(`/api/matches?userId=${userProfile.id}&userType=${userProfile.userType}`);
-        console.log('[Connect] Matches response:', response);
         
-        if (response.matches) {
-          // Convert date strings back to Date objects
-          const processedMatches = response.matches.map((match: any) => {
-            if (match.userType === 'parent') {
+        // Use the correct endpoint based on user type
+        const endpoint = isParent 
+          ? `/matching/doulas/${userProfile.id}`
+          : `/matching/parents/${userProfile.id}`;
+        
+        console.log('[Connect] Calling endpoint:', endpoint);
+        const matchesArray = await apiGet(endpoint);
+        console.log('[Connect] Matches response:', matchesArray);
+        
+        if (Array.isArray(matchesArray)) {
+          // Convert date strings back to Date objects for parent profiles
+          const processedMatches = matchesArray.map((match: any) => {
+            if (!isParent) {
+              // Processing parent matches for doulas
               return {
                 ...match,
+                userType: 'parent',
                 servicePeriodStart: match.servicePeriodStart ? new Date(match.servicePeriodStart) : null,
                 servicePeriodEnd: match.servicePeriodEnd ? new Date(match.servicePeriodEnd) : null,
                 desiredStartTime: match.desiredStartTime ? new Date(match.desiredStartTime) : null,
                 desiredEndTime: match.desiredEndTime ? new Date(match.desiredEndTime) : null,
               };
             }
-            return match;
+            // Processing doula matches for parents
+            return {
+              ...match,
+              userType: 'doula',
+            };
           });
           setMatches(processedMatches);
         } else {
@@ -80,12 +86,6 @@ export default function ConnectScreen() {
         }
       } catch (error: any) {
         console.error('[Connect] Error fetching matches:', error);
-        
-        // Check if this is a "endpoint not found" error
-        if (error.message?.includes('404') || error.message?.includes('Not Found')) {
-          console.warn('[Connect] Matching endpoint not implemented yet');
-        }
-        
         setMatches([]);
       } finally {
         setLoading(false);
@@ -103,13 +103,6 @@ export default function ConnectScreen() {
       }
 
       try {
-        // TODO: Backend Integration - Contract & Comment Endpoints
-        // The backend needs to implement:
-        // 1. GET /api/contracts/user/:userId - Get all contracts for a user
-        //    Response: { success: boolean, contracts: Array<Contract> }
-        // 2. GET /api/comments/doula/:doulaId - Get all comments for a doula
-        //    Response: { success: boolean, comments: Array<DoulaComment> }
-        
         console.log('[Connect] Fetching comment eligibility for doulas');
         
         const { apiGet } = await import('@/utils/api');
@@ -121,15 +114,15 @@ export default function ConnectScreen() {
           
           // Fetch eligibility - check if there's a completed contract
           try {
-            const contractsResponse = await apiGet(`/api/contracts/user/${userProfile.id}`);
-            const completedContract = contractsResponse.contracts?.find(
+            const contractsArray = await apiGet(`/users/${userProfile.id}/contracts`);
+            const completedContract = contractsArray?.find(
               (c: any) => c.doulaId === doulaId && c.status === 'completed'
             );
             
             if (completedContract) {
               // Check if already commented
-              const commentsResponse = await apiGet(`/api/comments/doula/${doulaId}`);
-              const hasCommented = commentsResponse.comments?.some(
+              const commentsArray = await apiGet(`/doulas/${doulaId}/comments`);
+              const hasCommented = commentsArray?.some(
                 (c: any) => c.parentId === userProfile.id && c.contractId === completedContract.id
               );
               
@@ -154,12 +147,6 @@ export default function ConnectScreen() {
             }
           } catch (error: any) {
             console.error('[Connect] Error fetching eligibility for doula:', doulaId, error);
-            
-            // Check if endpoints are not implemented
-            if (error.message?.includes('404') || error.message?.includes('Not Found')) {
-              console.warn('[Connect] Contract/comment endpoints not implemented yet');
-            }
-            
             eligibilityMap[doulaId] = {
               canComment: false,
               message: 'No active contract',
@@ -168,19 +155,13 @@ export default function ConnectScreen() {
           
           // Fetch existing comments
           try {
-            const commentsResponse = await apiGet(`/api/comments/doula/${doulaId}`);
-            commentsMap[doulaId] = commentsResponse.comments.map((c: any) => ({
+            const commentsArray = await apiGet(`/doulas/${doulaId}/comments`);
+            commentsMap[doulaId] = (commentsArray || []).map((c: any) => ({
               ...c,
               createdAt: new Date(c.createdAt),
             }));
           } catch (error: any) {
             console.error('[Connect] Error fetching comments for doula:', doulaId, error);
-            
-            // Check if endpoints are not implemented
-            if (error.message?.includes('404') || error.message?.includes('Not Found')) {
-              console.warn('[Connect] Comments endpoint not implemented yet');
-            }
-            
             commentsMap[doulaId] = [];
           }
         }
@@ -199,15 +180,10 @@ export default function ConnectScreen() {
     if (!userProfile) return;
 
     try {
-      // TODO: Backend Integration - Contract Creation Endpoint
-      // The backend needs to implement: POST /api/contracts
-      // Request body: { parentId: string, doulaId: string, startDate: string }
-      // Response: { success: boolean, contract: Contract }
-      
       console.log('[Connect] Starting contract with doula:', doulaId);
       
       const { apiPost } = await import('@/utils/api');
-      const response = await apiPost('/api/contracts', {
+      const response = await apiPost('/contracts', {
         parentId: userProfile.id,
         doulaId: doulaId,
         startDate: new Date().toISOString(),
@@ -221,7 +197,7 @@ export default function ConnectScreen() {
       
       Alert.alert(
         'Contract Started',
-        'Your contract has been started. You can leave a comment after 7 days.',
+        'Your contract has been started. Complete the contract to leave a comment.',
         [{ text: 'OK' }]
       );
       
@@ -230,24 +206,13 @@ export default function ConnectScreen() {
         ...prev,
         [doulaId]: {
           canComment: false,
-          daysUntilEligible: 7,
-          contractId: response.contract.id,
-          message: 'You can comment in 7 days',
+          contractId: response.contractId,
+          message: 'Complete the contract to leave a comment',
         },
       }));
     } catch (error: any) {
       console.error('[Connect] Error starting contract:', error);
-      
-      // Check if this is a "endpoint not found" error
-      if (error.message?.includes('404') || error.message?.includes('Not Found')) {
-        Alert.alert(
-          'Backend Not Ready',
-          'The contract creation endpoint is not yet implemented on the backend. Please implement POST /api/contracts endpoint.',
-          [{ text: 'OK' }]
-        );
-      } else {
-        Alert.alert('Error', error.message || 'Failed to start contract. Please try again.');
-      }
+      Alert.alert('Error', error.message || 'Failed to start contract. Please try again.');
     }
   };
 
@@ -270,18 +235,14 @@ export default function ConnectScreen() {
 
     setSubmittingComment(true);
     try {
-      // TODO: Backend Integration - Comment Creation Endpoint
-      // The backend needs to implement: POST /api/comments
-      // Request body: { contractId: string, doulaId: string, parentId: string, comment: string }
-      // Response: { success: boolean, comment: DoulaComment }
-      
       console.log('[Connect] Submitting comment for doula:', doulaId);
       
       const { apiPost } = await import('@/utils/api');
-      const response = await apiPost('/api/comments', {
+      const response = await apiPost('/comments', {
         contractId: eligibility.contractId,
-        doulaId: doulaId,
         parentId: userProfile.id,
+        doulaId: doulaId,
+        parentName: `${userProfile.firstName} ${userProfile.lastName}`,
         comment: commentText,
       });
       
@@ -292,8 +253,13 @@ export default function ConnectScreen() {
       }
       
       const newComment: DoulaComment = {
-        ...response.comment,
-        createdAt: new Date(response.comment.createdAt),
+        id: response.commentId,
+        contractId: eligibility.contractId,
+        parentId: userProfile.id,
+        doulaId: doulaId,
+        parentName: `${userProfile.firstName} ${userProfile.lastName}`,
+        comment: commentText,
+        createdAt: new Date(),
       };
       
       setDoulaComments(prev => ({
@@ -314,17 +280,7 @@ export default function ConnectScreen() {
       Alert.alert('Success', 'Your comment has been posted!');
     } catch (error: any) {
       console.error('[Connect] Error submitting comment:', error);
-      
-      // Check if this is a "endpoint not found" error
-      if (error.message?.includes('404') || error.message?.includes('Not Found')) {
-        Alert.alert(
-          'Backend Not Ready',
-          'The comment creation endpoint is not yet implemented on the backend. Please implement POST /api/comments endpoint.',
-          [{ text: 'OK' }]
-        );
-      } else {
-        Alert.alert('Error', error.message || 'Failed to submit comment. Please try again.');
-      }
+      Alert.alert('Error', error.message || 'Failed to submit comment. Please try again.');
     } finally {
       setSubmittingComment(false);
     }

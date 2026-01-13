@@ -10,169 +10,56 @@
  * - Error handling with proper logging
  * - Type-safe request/response handling
  * - Helper functions for common HTTP methods
- * - Automatic bearer token management for authenticated requests
  *
  * Usage:
  * 1. Import BACKEND_URL or helper functions
  * 2. Use apiCall() for basic requests
  * 3. Use apiGet(), apiPost(), etc. for convenience
- * 4. Use authenticatedApiCall() for requests requiring auth (token auto-retrieved)
- * 5. Backend URL is automatically configured in app.json when backend deploys
+ * 4. Backend URL is automatically configured in app.json when backend deploys
  *
  * ============================================================================
- * BACKEND API ENDPOINTS - IMPLEMENTATION STATUS
+ * BACKEND API ENDPOINTS - INTEGRATED
  * ============================================================================
- * 
- * ✅ IMPLEMENTED (Working):
  * 
  * Authentication (OTP-based):
  * - POST /auth/send-otp
- *   Body: { email: string }
- *   Response: { success: boolean, message: string, expiresIn: number }
- * 
  * - POST /auth/verify-otp
- *   Body: { email: string, code: string }
- *   Response: { success: boolean, message: string }
- * 
  * - DELETE /auth/cleanup-otps
- *   Response: { success: boolean, message: string }
  * 
- * ============================================================================
- * ❌ NOT IMPLEMENTED (Required for full functionality):
- * ============================================================================
+ * User Registration:
+ * - POST /auth/register-parent
+ * - POST /auth/register-doula
  * 
- * User Registration & Profile Management:
- * 
- * - POST /api/users/parent
- *   Body: {
- *     email: string,
- *     firstName: string,
- *     lastName: string,
- *     state: string,
- *     town: string,
- *     zipCode: string,
- *     serviceCategories: Array<'birth' | 'postpartum'>,
- *     financingType: Array<'self' | 'carrot' | 'medicaid'>,
- *     servicePeriodStart?: string (ISO date),
- *     servicePeriodEnd?: string (ISO date),
- *     preferredLanguages?: Array<string>,
- *     desiredDays?: Array<string>,
- *     desiredStartTime?: string (ISO date),
- *     desiredEndTime?: string (ISO date),
- *     acceptedTerms: boolean
- *   }
- *   Response: { success: boolean, userId: string, profile: ParentProfile }
- * 
- * - POST /api/users/doula
- *   Body: {
- *     email: string,
- *     firstName: string,
- *     lastName: string,
- *     state: string,
- *     town: string,
- *     zipCode: string,
- *     paymentPreferences: Array<'self' | 'carrot' | 'medicaid'>,
- *     driveDistance: number,
- *     spokenLanguages: Array<string>,
- *     hourlyRateMin: number,
- *     hourlyRateMax: number,
- *     serviceCategories: Array<'birth' | 'postpartum'>,
- *     certifications: Array<string>,
- *     profilePictureUrl: string,
- *     certificationDocuments?: Array<string>,
- *     referees?: Array<{ firstName: string, lastName: string, email: string }>,
- *     acceptedTerms: boolean
- *   }
- *   Response: { success: boolean, userId: string, profile: DoulaProfile }
- * 
- * - PUT /api/users/profile/:id
- *   Body: Partial profile update data (varies by user type)
- *   Response: { success: boolean, profile: UserProfile }
- * 
- * File Upload:
- * 
- * - POST /api/upload/profile-picture
- *   Body: multipart/form-data with 'image' field
- *   Response: { success: boolean, url: string }
- * 
- * - POST /api/upload/certification
- *   Body: multipart/form-data with 'document' field
- *   Response: { success: boolean, url: string }
+ * Profile Management:
+ * - GET /parents/{userId}
+ * - PUT /parents/{userId}
+ * - GET /doulas/{userId}
+ * - PUT /doulas/{userId}
  * 
  * Matching System:
- * 
- * - GET /api/matches?userId={userId}&userType={userType}
- *   Query params: userId (string), userType ('parent' | 'doula')
- *   Response: { success: boolean, matches: Array<DoulaProfile | ParentProfile> }
- *   Note: Should implement matching algorithm based on:
- *     - Location (state, town, drive distance for doulas)
- *     - Service categories (birth/postpartum)
- *     - Languages
- *     - Financing/payment preferences
- *     - Availability (for parents)
+ * - GET /matching/doulas/{userId} - Get matching doulas for a parent
+ * - GET /matching/parents/{userId} - Get matching parents for a doula
  * 
  * Contract Management:
- * 
- * - POST /api/contracts
- *   Body: { parentId: string, doulaId: string, startDate: string }
- *   Response: { success: boolean, contract: Contract }
- * 
- * - GET /api/contracts/user/:userId
- *   Response: { success: boolean, contracts: Array<Contract> }
- *   Note: Contract should have status field: 'active' | 'completed' | 'cancelled'
+ * - POST /contracts
+ * - GET /contracts/{contractId}
+ * - PUT /contracts/{contractId}
+ * - GET /users/{userId}/contracts
  * 
  * Comments & Reviews:
+ * - POST /comments
+ * - GET /doulas/{doulaId}/comments
  * 
- * - POST /api/comments
- *   Body: { contractId: string, doulaId: string, parentId: string, comment: string }
- *   Response: { success: boolean, comment: DoulaComment }
- *   Note: Should validate that:
- *     - Contract exists and is completed
- *     - Parent hasn't already commented on this contract
- *     - Comment is <= 160 characters
- * 
- * - GET /api/comments/doula/:doulaId
- *   Response: { success: boolean, comments: Array<DoulaComment> }
- *   Note: DoulaComment should include:
- *     - id, contractId, doulaId, parentId, parentName, comment, createdAt
- * 
- * Payment Processing (Stripe Integration):
- * 
- * - POST /api/payments/create-checkout-session
- *   Body: { userId: string, userType: string, email: string }
- *   Response: { success: boolean, checkoutUrl: string, sessionId: string }
- *   Note: Should create Stripe Checkout session with:
- *     - Amount: $99.00 USD
- *     - Period: Annual for parents, Monthly for doulas
- *     - Success URL: {frontend_url}/payment-success?session_id={CHECKOUT_SESSION_ID}
- *     - Cancel URL: {frontend_url}/payment
- * 
- * - GET /api/payments/status/:sessionId
- *   Response: { success: boolean, status: 'pending' | 'completed' | 'failed' }
- * 
- * - PUT /api/users/subscription
- *   Body: { userId: string, subscriptionActive: boolean }
- *   Response: { success: boolean }
- * 
- * ============================================================================
- * DATABASE SCHEMA RECOMMENDATIONS:
- * ============================================================================
- * 
- * Tables needed:
- * 1. users - Base user info (id, email, userType, createdAt)
- * 2. parent_profiles - Parent-specific data
- * 3. doula_profiles - Doula-specific data
- * 4. contracts - Parent-doula contracts
- * 5. comments - Doula reviews/comments
- * 6. subscriptions - Payment/subscription status
- * 7. otp_codes - Already implemented for OTP auth
+ * Payment Processing (Stripe):
+ * - POST /payments/create-session
+ * - POST /payments/webhook
+ * - GET /subscriptions/{userId}
+ * - PUT /subscriptions/{userId}
  * 
  * ============================================================================
  */
 
 import Constants from "expo-constants";
-import { Platform } from "react-native";
-import * as SecureStore from "expo-secure-store";
 
 /**
  * Backend URL is configured in app.json under expo.extra.backendUrl
@@ -186,36 +73,10 @@ if (__DEV__) {
 }
 
 /**
- * Bearer token storage key
- * Matches the app name "doulaconnect" from app.json scheme
- */
-const BEARER_TOKEN_KEY = "doulaconnect_bearer_token";
-
-/**
  * Check if backend is properly configured
  */
 export const isBackendConfigured = (): boolean => {
   return !!BACKEND_URL && BACKEND_URL.length > 0;
-};
-
-/**
- * Get bearer token from platform-specific storage
- * Web: localStorage
- * Native: SecureStore
- *
- * @returns Bearer token or null if not found
- */
-export const getBearerToken = async (): Promise<string | null> => {
-  try {
-    if (Platform.OS === "web") {
-      return localStorage.getItem(BEARER_TOKEN_KEY);
-    } else {
-      return await SecureStore.getItemAsync(BEARER_TOKEN_KEY);
-    }
-  } catch (error) {
-    console.error("[API] Error retrieving bearer token:", error);
-    return null;
-  }
 };
 
 /**
@@ -333,85 +194,4 @@ export const apiPatch = async <T = any>(
  */
 export const apiDelete = async <T = any>(endpoint: string): Promise<T> => {
   return apiCall<T>(endpoint, { method: "DELETE" });
-};
-
-/**
- * Authenticated API call helper
- * Automatically retrieves bearer token from storage and adds to Authorization header
- *
- * @param endpoint - API endpoint path
- * @param options - Fetch options (method, headers, body, etc.)
- * @returns Parsed JSON response
- * @throws Error if token not found or request fails
- */
-export const authenticatedApiCall = async <T = any>(
-  endpoint: string,
-  options?: RequestInit
-): Promise<T> => {
-  const token = await getBearerToken();
-
-  if (!token) {
-    throw new Error("Authentication token not found. Please sign in.");
-  }
-
-  return apiCall<T>(endpoint, {
-    ...options,
-    headers: {
-      ...options?.headers,
-      Authorization: `Bearer ${token}`,
-    },
-  });
-};
-
-/**
- * Authenticated GET request
- */
-export const authenticatedGet = async <T = any>(endpoint: string): Promise<T> => {
-  return authenticatedApiCall<T>(endpoint, { method: "GET" });
-};
-
-/**
- * Authenticated POST request
- */
-export const authenticatedPost = async <T = any>(
-  endpoint: string,
-  data: any
-): Promise<T> => {
-  return authenticatedApiCall<T>(endpoint, {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-};
-
-/**
- * Authenticated PUT request
- */
-export const authenticatedPut = async <T = any>(
-  endpoint: string,
-  data: any
-): Promise<T> => {
-  return authenticatedApiCall<T>(endpoint, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
-};
-
-/**
- * Authenticated PATCH request
- */
-export const authenticatedPatch = async <T = any>(
-  endpoint: string,
-  data: any
-): Promise<T> => {
-  return authenticatedApiCall<T>(endpoint, {
-    method: "PATCH",
-    body: JSON.stringify(data),
-  });
-};
-
-/**
- * Authenticated DELETE request
- */
-export const authenticatedDelete = async <T = any>(endpoint: string): Promise<T> => {
-  return authenticatedApiCall<T>(endpoint, { method: "DELETE" });
 };

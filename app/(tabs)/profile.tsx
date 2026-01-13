@@ -46,11 +46,6 @@ export default function ProfileScreen() {
     if (!userProfile) return;
     
     try {
-      // TODO: Backend Integration - Profile Update Endpoint
-      // The backend needs to implement: PUT /api/users/profile/:id
-      // Request body should include updated profile data
-      // Response should return: { success: boolean, profile: UserProfile }
-      
       const { apiPut } = await import('@/utils/api');
       
       // Prepare update data based on user type
@@ -85,7 +80,12 @@ export default function ProfileScreen() {
             certifications: (userProfile as DoulaProfile).certifications,
           };
       
-      const response = await apiPut(`/api/users/profile/${userProfile.id}`, updateData);
+      const endpoint = userProfile.userType === 'parent' 
+        ? `/parents/${userProfile.id}`
+        : `/doulas/${userProfile.id}`;
+      
+      console.log('[Profile] Updating profile at:', endpoint);
+      const response = await apiPut(endpoint, updateData);
       console.log('[Profile] Update response:', response);
       
       if (!response.success) {
@@ -96,17 +96,7 @@ export default function ProfileScreen() {
       Alert.alert('Success', 'Profile updated successfully');
     } catch (error: any) {
       console.error('[Profile] Error updating profile:', error);
-      
-      // Check if this is a "endpoint not found" error
-      if (error.message?.includes('404') || error.message?.includes('Not Found')) {
-        Alert.alert(
-          'Backend Not Ready',
-          'The profile update endpoint is not yet implemented on the backend. Please implement PUT /api/users/profile/:id endpoint.',
-          [{ text: 'OK' }]
-        );
-      } else {
-        Alert.alert('Error', error.message || 'Failed to update profile. Please try again.');
-      }
+      Alert.alert('Error', error.message || 'Failed to update profile. Please try again.');
     }
   };
 
