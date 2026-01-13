@@ -169,6 +169,16 @@ export default function EmailAuthScreen() {
     
     // If error is a string
     if (typeof error === 'string') {
+      // Check for common error patterns and provide helpful messages
+      if (error.includes('Failed to send OTP') || error.includes('Failed to send email')) {
+        return 'Unable to send verification email. Please check your email address and try again.';
+      }
+      if (error.includes('Email service not configured')) {
+        return 'Email service is temporarily unavailable. Please try again later.';
+      }
+      if (error.includes('Invalid email')) {
+        return 'Please enter a valid email address.';
+      }
       return error;
     }
     
@@ -179,28 +189,42 @@ export default function EmailAuthScreen() {
       if (jsonMatch) {
         try {
           const errorObj = JSON.parse(jsonMatch[0]);
-          return errorObj.error || errorObj.message || error.message;
+          const errorMsg = errorObj.error || errorObj.message || error.message;
+          // Apply same helpful message transformations
+          if (errorMsg.includes('Failed to send OTP') || errorMsg.includes('Failed to send email')) {
+            return 'Unable to send verification email. Please check your email address and try again.';
+          }
+          return errorMsg;
         } catch (e) {
           console.log('[OTP] Failed to parse JSON error:', e);
         }
+      }
+      
+      // Apply helpful message transformations to raw message
+      if (error.message.includes('Failed to send OTP') || error.message.includes('Failed to send email')) {
+        return 'Unable to send verification email. Please check your email address and try again.';
       }
       return error.message;
     }
     
     // If error is an object with error property
     if (error?.error) {
+      if (error.error.includes('Failed to send OTP') || error.error.includes('Failed to send email')) {
+        return 'Unable to send verification email. Please check your email address and try again.';
+      }
       return error.error;
     }
     
-    return 'An unexpected error occurred';
+    return 'An unexpected error occurred. Please try again.';
   };
 
   const handleSendOTP = async () => {
     // Clear previous errors
     setError('');
 
-    // Validate email
-    if (!email || !email.includes('@') || !email.includes('.')) {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
       setError(t('invalidEmail'));
       return;
     }
@@ -208,15 +232,20 @@ export default function EmailAuthScreen() {
     setLoading(true);
     try {
       console.log('[OTP] Sending OTP to:', email);
+      console.log('[OTP] Request timestamp:', new Date().toISOString());
       
       const { apiPost } = await import('@/utils/api');
       const response = await apiPost('/auth/send-otp', { email });
-      console.log('[OTP] Response:', response);
+      console.log('[OTP] Response received:', response);
+      console.log('[OTP] Response timestamp:', new Date().toISOString());
       
       if (!response.success) {
-        throw new Error(response.message || response.error || 'Failed to send OTP');
+        const errorMsg = response.message || response.error || 'Failed to send OTP';
+        console.error('[OTP] Backend returned error:', errorMsg);
+        throw new Error(errorMsg);
       }
       
+      console.log('[OTP] OTP sent successfully, expires in:', response.expiresIn, 'seconds');
       setOtpSent(true);
       setResendTimer(60);
       
@@ -234,6 +263,9 @@ export default function EmailAuthScreen() {
       Alert.alert('Success', t('codeSent'));
     } catch (error: any) {
       console.error('[OTP] Error sending OTP:', error);
+      console.error('[OTP] Error type:', typeof error);
+      console.error('[OTP] Error details:', JSON.stringify(error, null, 2));
+      
       const errorMessage = parseErrorMessage(error);
       setError(errorMessage);
       Alert.alert('Error', errorMessage);
@@ -366,6 +398,10 @@ export default function EmailAuthScreen() {
                 <Text style={styles.buttonText}>{t('sendCode')}</Text>
               )}
             </TouchableOpacity>
+            
+            <Text style={styles.infoText}>
+              We&apos;ll send a 6-digit verification code to your email address. The code will expire in 10 minutes.
+            </Text>
           </>
         ) : (
           <>
