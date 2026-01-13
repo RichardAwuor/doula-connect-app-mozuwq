@@ -15,108 +15,108 @@ import { useUser } from '@/contexts/UserContext';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import Constants from 'expo-constants';
-import { useStripe } from '@stripe/stripe-react-native';
 import { apiPost } from '@/utils/api';
+import * as WebBrowser from 'expo-web-browser';
 
 export default function PaymentScreen() {
   const router = useRouter();
   const { userProfile, setUserProfile } = useUser();
   const [processing, setProcessing] = useState(false);
-  const stripe = useStripe();
 
   if (!userProfile) {
     return null;
   }
 
   const isParent = userProfile.userType === 'parent';
-  const subscriptionFee = isParent ? 99 : 99;
+  const subscriptionFee = 99;
   const subscriptionPeriod = isParent ? 'Annual' : 'Monthly';
-  const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl;
 
   const handlePayment = async () => {
-    console.log('[Payment Native] Processing payment for user:', userProfile.id);
-    console.log('[Payment Native] Platform:', Platform.OS);
-    console.log('[Payment Native] Backend URL:', BACKEND_URL);
+    console.log('[Payment Native] Creating payment session...');
     setProcessing(true);
 
     try {
-      console.log('[Payment Native] Creating checkout session...');
-      
-      const response = await apiPost('/api/payments/create-checkout-session', {
+      const response = await apiPost('/payments/create-session', {
         userId: userProfile.id,
         userType: userProfile.userType,
+        planType: isParent ? 'annual' : 'monthly',
         email: userProfile.email,
       });
       
-      console.log('[Payment Native] Checkout session created:', response);
+      console.log('[Payment Native] Payment session created:', response);
 
-      if (!response.success || !response.checkoutUrl) {
-        throw new Error('Failed to create checkout session');
-      }
-
-      // For native, we'll use the Stripe checkout URL in a webview or browser
-      // This is a simplified approach - in production you might want to use Stripe's native SDK
-      const { error: initError } = await stripe.initPaymentSheet({
-        merchantDisplayName: 'Doula Connect',
-        paymentIntentClientSecret: response.sessionId, // Using session ID as client secret
-        defaultBillingDetails: {
-          name: `${userProfile.firstName} ${userProfile.lastName}`,
-          email: userProfile.email,
-        },
-      });
-
-      if (initError) {
-        console.error('[Payment Native] Error initializing payment sheet:', initError);
-        Alert.alert('Error', 'Failed to initialize payment. Please try again.');
+      if (response.success && response.checkoutUrl) {
+        console.log('[Payment Native] Opening Stripe Checkout:', response.checkoutUrl);
+        
+        // Open Stripe Checkout in browser
+        const result = await WebBrowser.openBrowserAsync(response.checkoutUrl);
+        console.log('[Payment Native] Browser result:', result);
+        
+        // After user closes the browser, check subscription status
+        if (result.type === 'cancel' || result.type === 'dismiss') {
+          console.log('[Payment Native] User closed checkout, checking subscription status...');
+          
+          // Wait a bit for webhook to process
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          try {
+            const { apiGet } = await import('@/utils/api');
+            const subscription = await apiGet(`/subscriptions/${userProfile.id}`);
+            console.log('[Payment Native] Subscription status:', subscription);
+            
+            if (subscription.status === 'active') {
+              // Update local profile
+              setUserProfile({
+                ...userProfile,
+                subscriptionActive: true,
+              });
+              
+              Alert.alert(
+                'Payment Successful',
+                'Your subscription is now active!',
+                [
+                  {
+                    text: 'Continue',
+                    onPress: () => {
+                      router.replace('/(tabs)/connect');
+                    }
+                  }
+                ]
+              );
+            } else {
+              Alert.alert(
+                'Payment Status',
+                'Please complete the payment to activate your subscription.',
+                [
+                  {
+                    text: 'Try Again',
+                    onPress: () => setProcessing(false)
+                  }
+                ]
+              );
+            }
+          } catch (error: any) {
+            console.error('[Payment Native] Error checking subscription:', error);
+            Alert.alert(
+              'Payment Status Unknown',
+              'Please check your subscription status in your profile.',
+              [
+                {
+                  text: 'OK',
+                  onPress: () => setProcessing(false)
+                }
+              ]
+            );
+          }
+        }
+        
         setProcessing(false);
-        return;
+      } else {
+        throw new Error(response.error || 'Failed to create payment session');
       }
-
-      console.log('[Payment Native] Presenting payment sheet...');
-      const { error: presentError } = await stripe.presentPaymentSheet();
-
-      if (presentError) {
-        console.error('[Payment Native] Error presenting payment sheet:', presentError);
-        Alert.alert('Payment Cancelled', presentError.message);
-        setProcessing(false);
-        return;
-      }
-
-      console.log('[Payment Native] Payment successful!');
-      
-      // Update subscription status
-      await apiPost(`/api/users/subscription/${userProfile.id}`, {
-        subscriptionActive: true,
-        expiresAt: new Date(Date.now() + (isParent ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString(),
-      });
-
-      const updatedProfile = {
-        ...userProfile,
-        subscriptionActive: true,
-      };
-      setUserProfile(updatedProfile);
-      console.log('[Payment Native] User profile updated:', updatedProfile);
-
-      Alert.alert(
-        'Payment Successful',
-        'Your subscription is now active!',
-        [
-          {
-            text: 'Continue',
-            onPress: () => {
-              console.log('[Payment Native] Navigating to connect screen');
-              router.push('/(tabs)/connect');
-              if (router.canDismiss()) {
-                router.dismissAll();
-              }
-            },
-          },
-        ]
-      );
-      setProcessing(false);
-    } catch (error) {
-      console.error('[Payment Native] Payment error:', error);
-      Alert.alert('Error', 'Payment processing failed. Please try again.');
+    } catch (error: any) {
+      console.error('[Payment Native] Error:', error);
+      Alert.alert('Error', error.message || 'Failed to initialize payment. Please try again.');
       setProcessing(false);
     }
   };
@@ -200,6 +200,18 @@ export default function PaymentScreen() {
               Secure payment processing powered by Stripe
             </Text>
           </View>
+        </View>
+
+        <View style={styles.webNotice}>
+          <IconSymbol
+            ios_icon_name="info.circle"
+            android_material_icon_name="info"
+            size={20}
+            color={colors.primary}
+          />
+          <Text style={styles.webNoticeText}>
+            You will be redirected to Stripe Checkout to complete your payment
+          </Text>
         </View>
 
         <TouchableOpacity
@@ -310,6 +322,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.success,
     fontWeight: '600',
+  },
+  webNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  webNoticeText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: colors.primary,
+    flex: 1,
   },
   buttonDisabled: {
     opacity: 0.6,

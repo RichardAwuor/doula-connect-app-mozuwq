@@ -16,6 +16,7 @@ import { IconSymbol } from '@/components/IconSymbol';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import Constants from 'expo-constants';
 import { apiPost } from '@/utils/api';
+import * as WebBrowser from 'expo-web-browser';
 
 export default function PaymentScreen() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function PaymentScreen() {
   }
 
   const isParent = userProfile.userType === 'parent';
-  const subscriptionFee = isParent ? 99 : 99;
+  const subscriptionFee = 99;
   const subscriptionPeriod = isParent ? 'Annual' : 'Monthly';
 
   const handlePayment = async () => {
@@ -44,44 +45,74 @@ export default function PaymentScreen() {
       
       console.log('[Payment] Payment session created:', response);
 
-      if (response.success && response.clientSecret) {
-        // For web, you would integrate Stripe Elements here
-        // For now, simulate successful payment and update subscription
-        console.log('[Payment] Simulating successful payment...');
+      if (response.success && response.checkoutUrl) {
+        console.log('[Payment] Opening Stripe Checkout:', response.checkoutUrl);
         
-        try {
-          // Update subscription status in backend
-          const { apiPut } = await import('@/utils/api');
-          await apiPut(`/subscriptions/${userProfile.id}`, {
-            status: 'active',
-          });
-          console.log('[Payment] Subscription status updated to active');
+        // Open Stripe Checkout in browser
+        const result = await WebBrowser.openBrowserAsync(response.checkoutUrl);
+        console.log('[Payment] Browser result:', result);
+        
+        // After user closes the browser, check subscription status
+        if (result.type === 'cancel' || result.type === 'dismiss') {
+          console.log('[Payment] User closed checkout, checking subscription status...');
           
-          // Update local profile
-          setUserProfile({
-            ...userProfile,
-            subscriptionActive: true,
-          });
+          // Wait a bit for webhook to process
+          await new Promise(resolve => setTimeout(resolve, 2000));
           
-          Alert.alert(
-            'Payment Successful',
-            'Your subscription is now active!',
-            [
-              {
-                text: 'Continue',
-                onPress: () => {
-                  router.replace('/(tabs)/connect');
+          try {
+            const { apiGet } = await import('@/utils/api');
+            const subscription = await apiGet(`/subscriptions/${userProfile.id}`);
+            console.log('[Payment] Subscription status:', subscription);
+            
+            if (subscription.status === 'active') {
+              // Update local profile
+              setUserProfile({
+                ...userProfile,
+                subscriptionActive: true,
+              });
+              
+              Alert.alert(
+                'Payment Successful',
+                'Your subscription is now active!',
+                [
+                  {
+                    text: 'Continue',
+                    onPress: () => {
+                      router.replace('/(tabs)/connect');
+                    }
+                  }
+                ]
+              );
+            } else {
+              Alert.alert(
+                'Payment Status',
+                'Please complete the payment to activate your subscription.',
+                [
+                  {
+                    text: 'Try Again',
+                    onPress: () => setProcessing(false)
+                  }
+                ]
+              );
+            }
+          } catch (error: any) {
+            console.error('[Payment] Error checking subscription:', error);
+            Alert.alert(
+              'Payment Status Unknown',
+              'Please check your subscription status in your profile.',
+              [
+                {
+                  text: 'OK',
+                  onPress: () => setProcessing(false)
                 }
-              }
-            ]
-          );
-        } catch (error: any) {
-          console.error('[Payment] Error updating subscription:', error);
-          Alert.alert('Error', 'Payment processed but failed to activate subscription. Please contact support.');
+              ]
+            );
+          }
         }
-      } else {
-        Alert.alert('Error', response.error || 'Failed to create payment session');
+        
         setProcessing(false);
+      } else {
+        throw new Error(response.error || 'Failed to create payment session');
       }
     } catch (error: any) {
       console.error('[Payment] Error:', error);
