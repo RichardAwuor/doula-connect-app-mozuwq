@@ -44,6 +44,7 @@ function generateId(): string {
 
 /**
  * Send OTP email using Resend
+ * Falls back to console logging if RESEND_API_KEY is not configured (for testing)
  */
 async function sendOtpEmail(email: string, otpCode: string): Promise<void> {
   const htmlContent = `
@@ -97,16 +98,43 @@ async function sendOtpEmail(email: string, otpCode: string): Promise<void> {
     </html>
   `;
 
-  const client = getResendClient();
-  const result = await client.emails.send({
-    from: process.env.RESEND_FROM || 'noreply@doulaconnect.com',
-    to: email,
-    subject: 'Your Doula Connect Verification Code',
-    html: htmlContent,
-  });
+  try {
+    const apiKey = process.env.RESEND_API_KEY;
 
-  if (result.error) {
-    throw new Error(`Failed to send email: ${result.error.message}`);
+    // If no API key is configured, log for testing purposes
+    if (!apiKey) {
+      console.log('=== OTP EMAIL SIMULATION (RESEND_API_KEY not configured) ===');
+      console.log(`To: ${email}`);
+      console.log(`Subject: Your Doula Connect Verification Code`);
+      console.log(`OTP Code: ${otpCode}`);
+      console.log(`HTML Content Length: ${htmlContent.length} characters`);
+      console.log('===========================================================');
+      return;
+    }
+
+    const client = getResendClient();
+    const senderEmail = process.env.RESEND_FROM || 'noreply@doulaconnect.com';
+
+    const result = await client.emails.send({
+      from: senderEmail,
+      to: email,
+      subject: 'Your Doula Connect Verification Code',
+      html: htmlContent,
+    });
+
+    if (result.error) {
+      throw new Error(`Email service error: ${result.error.message}`);
+    }
+
+    // Check if response has data and id (successful response)
+    if (!result.data || !result.data.id) {
+      throw new Error('Email sent but no confirmation ID received from email service');
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Email delivery failed: ${error.message}`);
+    }
+    throw new Error('Email delivery failed: Unknown error');
   }
 }
 
@@ -158,9 +186,10 @@ export function register(app: App, fastify: FastifyInstance) {
   ): Promise<void> => {
     const { email } = request.body;
 
-    // Validate email format
-    if (!email || !email.includes('@')) {
-      await reply.status(400).send({ error: 'Invalid email address' });
+    // Validate email format using a more robust pattern
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      await reply.status(400).send({ error: 'Invalid email address format' });
       return;
     }
 
@@ -170,6 +199,8 @@ export function register(app: App, fastify: FastifyInstance) {
       const otpId = generateId();
       const now = new Date();
       const expiresAt = new Date(now.getTime() + OTP_EXPIRATION_MINUTES * 60 * 1000);
+
+      app.logger.debug(`Generating OTP for ${email}. OTP Code: ${otpCode}`);
 
       // Delete any existing OTPs for this email to keep it clean
       await app.db.delete(schema.emailOtps).where(eq(schema.emailOtps.email, email));
@@ -185,10 +216,29 @@ export function register(app: App, fastify: FastifyInstance) {
         attemptCount: 0,
       });
 
-      // Send OTP via email
-      await sendOtpEmail(email, otpCode);
+      app.logger.debug(`OTP stored in database for ${email} with ID ${otpId}`);
 
-      app.logger.info(`OTP sent to ${email}`);
+      // Send OTP via email
+      try {
+        await sendOtpEmail(email, otpCode);
+        app.logger.info(`OTP email sent successfully to ${email}`);
+      } catch (emailError) {
+        // Log the specific email error for debugging
+        const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
+        app.logger.error(`Email sending failed for ${email}: ${errorMessage}`);
+
+        // Check if it's an API key issue
+        if (errorMessage.includes('RESEND_API_KEY') || errorMessage.includes('Missing API key')) {
+          await reply.status(503).send({
+            error: 'Email service is not configured. Please contact support.',
+            debug: 'RESEND_API_KEY environment variable is missing',
+          });
+          return;
+        }
+
+        // Re-throw for general error handling
+        throw emailError;
+      }
 
       await reply.status(200).send({
         success: true,
@@ -196,9 +246,12 @@ export function register(app: App, fastify: FastifyInstance) {
         expiresIn: OTP_EXPIRATION_MINUTES * 60,
       });
     } catch (error) {
-      app.logger.error(`Failed to send OTP to ${email}: ${error instanceof Error ? error.message : String(error)}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      app.logger.error(`Failed to send OTP to ${email}: ${errorMessage}`);
+
       await reply.status(500).send({
-        error: 'Failed to send OTP email',
+        error: 'Unable to send verification email. Please try again later.',
+        details: errorMessage,
       });
     }
   });
