@@ -1,19 +1,22 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and, lt } from 'drizzle-orm';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
 
-// Email configuration - using environment variables
-const emailTransporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'localhost',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: process.env.SMTP_USER && process.env.SMTP_PASSWORD ? {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
-  } : undefined,
-});
+// Email configuration - lazy initialized to allow optional RESEND_API_KEY
+let resend: Resend | null = null;
+
+function getResendClient(): Resend {
+  if (!resend) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY environment variable is not set');
+    }
+    resend = new Resend(apiKey);
+  }
+  return resend;
+}
 
 // Constants
 const OTP_EXPIRATION_MINUTES = 10;
@@ -40,7 +43,7 @@ function generateId(): string {
 }
 
 /**
- * Send OTP email
+ * Send OTP email using Resend
  */
 async function sendOtpEmail(email: string, otpCode: string): Promise<void> {
   const htmlContent = `
@@ -49,49 +52,62 @@ async function sendOtpEmail(email: string, otpCode: string): Promise<void> {
       <head>
         <meta charset="utf-8">
         <style>
-          body { font-family: Arial, sans-serif; color: #333; }
+          body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+          .header { background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin-bottom: 20px; text-align: center; }
+          .header h2 { margin: 0; color: #333; }
           .otp-code {
-            font-size: 32px;
+            font-size: 48px;
             font-weight: bold;
-            letter-spacing: 5px;
+            letter-spacing: 8px;
             text-align: center;
             background-color: #e3f2fd;
-            padding: 20px;
+            padding: 30px;
             border-radius: 5px;
-            margin: 20px 0;
+            margin: 30px 0;
             font-family: 'Courier New', monospace;
+            color: #1976d2;
           }
-          .footer { color: #999; font-size: 12px; margin-top: 20px; }
+          .content { color: #555; }
+          .footer { color: #999; font-size: 12px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
+          .security-notice { background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107; }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <h2>Doula Connect Verification</h2>
+            <h2>🔐 Doula Connect Verification</h2>
           </div>
-          <p>Hello,</p>
-          <p>Your verification code for Doula Connect is:</p>
-          <div class="otp-code">${otpCode}</div>
-          <p>This code will expire in 10 minutes.</p>
-          <p>If you did not request this verification code, please ignore this email. Your account remains secure.</p>
+          <div class="content">
+            <p>Hello,</p>
+            <p>Your verification code for Doula Connect is:</p>
+            <div class="otp-code">${otpCode}</div>
+            <p><strong>This code will expire in 10 minutes.</strong></p>
+            <div class="security-notice">
+              <p><strong>⚠️ Security Notice:</strong> If you did not request this verification code, please ignore this email. Your account remains secure. Never share this code with anyone.</p>
+            </div>
+            <p>Thank you for using Doula Connect.</p>
+          </div>
           <div class="footer">
             <p>© Doula Connect. All rights reserved.</p>
-            <p>This is an automated security email. Please do not reply.</p>
+            <p>This is an automated security email. Please do not reply to this message.</p>
           </div>
         </div>
       </body>
     </html>
   `;
 
-  await emailTransporter.sendMail({
-    from: process.env.SMTP_FROM || 'noreply@doulaconnect.com',
+  const client = getResendClient();
+  const result = await client.emails.send({
+    from: process.env.RESEND_FROM || 'noreply@doulaconnect.com',
     to: email,
     subject: 'Your Doula Connect Verification Code',
     html: htmlContent,
-    text: `Your Doula Connect verification code is: ${otpCode}\n\nThis code will expire in 10 minutes.\n\nIf you did not request this code, please ignore this email.`,
   });
+
+  if (result.error) {
+    throw new Error(`Failed to send email: ${result.error.message}`);
+  }
 }
 
 export function register(app: App, fastify: FastifyInstance) {
