@@ -1,4 +1,5 @@
 
+
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import React, { useEffect } from "react";
@@ -45,22 +46,6 @@ const DoulaTheme: Theme = {
   },
 };
 
-function AppContent({ children }: { children: React.ReactNode }) {
-  if (!STRIPE_PUBLISHABLE_KEY) {
-    console.warn('⚠️ Stripe publishable key not configured');
-    return <>{children}</>;
-  }
-
-  return (
-    <StripeProvider
-      publishableKey={STRIPE_PUBLISHABLE_KEY}
-      merchantIdentifier="merchant.com.doulaconnect.app"
-    >
-      {children}
-    </StripeProvider>
-  );
-}
-
 export default function RootLayout() {
   const { isConnected } = useNetworkState();
   const colorScheme = useColorScheme();
@@ -71,7 +56,6 @@ export default function RootLayout() {
   useEffect(() => {
     if (error) {
       console.error('Font loading error:', error);
-      // Hide splash screen even if fonts fail to load
       SplashScreen.hideAsync();
     }
   }, [error]);
@@ -89,7 +73,10 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AppContent>
+      <StripeProvider
+        publishableKey={STRIPE_PUBLISHABLE_KEY || ''}
+        merchantIdentifier="merchant.com.doulaconnect.app"
+      >
         <ThemeProvider value={DoulaTheme}>
           <WidgetProvider>
             <UserProvider>
@@ -107,7 +94,8 @@ export default function RootLayout() {
             </UserProvider>
           </WidgetProvider>
         </ThemeProvider>
-      </AppContent>
+      </StripeProvider>
     </GestureHandlerRootView>
   );
 }
+
