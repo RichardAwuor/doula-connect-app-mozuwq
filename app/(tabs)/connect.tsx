@@ -47,6 +47,13 @@ export default function ConnectScreen() {
 
       setLoading(true);
       try {
+        // TODO: Backend Integration - Matching System Endpoint
+        // The backend needs to implement: GET /api/matches?userId={userId}&userType={userType}
+        // Response should return: { success: boolean, matches: Array<DoulaProfile | ParentProfile> }
+        // The matching algorithm should:
+        // - Match parents with doulas based on location, service categories, languages, etc.
+        // - Match doulas with parents based on their preferences
+        
         console.log('[Connect] Fetching matches for user:', userProfile.id);
         
         const { apiGet } = await import('@/utils/api');
@@ -71,8 +78,14 @@ export default function ConnectScreen() {
         } else {
           setMatches([]);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('[Connect] Error fetching matches:', error);
+        
+        // Check if this is a "endpoint not found" error
+        if (error.message?.includes('404') || error.message?.includes('Not Found')) {
+          console.warn('[Connect] Matching endpoint not implemented yet');
+        }
+        
         setMatches([]);
       } finally {
         setLoading(false);
@@ -90,6 +103,13 @@ export default function ConnectScreen() {
       }
 
       try {
+        // TODO: Backend Integration - Contract & Comment Endpoints
+        // The backend needs to implement:
+        // 1. GET /api/contracts/user/:userId - Get all contracts for a user
+        //    Response: { success: boolean, contracts: Array<Contract> }
+        // 2. GET /api/comments/doula/:doulaId - Get all comments for a doula
+        //    Response: { success: boolean, comments: Array<DoulaComment> }
+        
         console.log('[Connect] Fetching comment eligibility for doulas');
         
         const { apiGet } = await import('@/utils/api');
@@ -132,8 +152,14 @@ export default function ConnectScreen() {
                 message: 'Complete a contract to leave a comment',
               };
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error('[Connect] Error fetching eligibility for doula:', doulaId, error);
+            
+            // Check if endpoints are not implemented
+            if (error.message?.includes('404') || error.message?.includes('Not Found')) {
+              console.warn('[Connect] Contract/comment endpoints not implemented yet');
+            }
+            
             eligibilityMap[doulaId] = {
               canComment: false,
               message: 'No active contract',
@@ -147,8 +173,14 @@ export default function ConnectScreen() {
               ...c,
               createdAt: new Date(c.createdAt),
             }));
-          } catch (error) {
+          } catch (error: any) {
             console.error('[Connect] Error fetching comments for doula:', doulaId, error);
+            
+            // Check if endpoints are not implemented
+            if (error.message?.includes('404') || error.message?.includes('Not Found')) {
+              console.warn('[Connect] Comments endpoint not implemented yet');
+            }
+            
             commentsMap[doulaId] = [];
           }
         }
@@ -167,6 +199,11 @@ export default function ConnectScreen() {
     if (!userProfile) return;
 
     try {
+      // TODO: Backend Integration - Contract Creation Endpoint
+      // The backend needs to implement: POST /api/contracts
+      // Request body: { parentId: string, doulaId: string, startDate: string }
+      // Response: { success: boolean, contract: Contract }
+      
       console.log('[Connect] Starting contract with doula:', doulaId);
       
       const { apiPost } = await import('@/utils/api');
@@ -179,7 +216,7 @@ export default function ConnectScreen() {
       console.log('[Connect] Contract created:', response);
       
       if (!response.success) {
-        throw new Error('Failed to create contract');
+        throw new Error(response.error || 'Failed to create contract');
       }
       
       Alert.alert(
@@ -198,9 +235,19 @@ export default function ConnectScreen() {
           message: 'You can comment in 7 days',
         },
       }));
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Connect] Error starting contract:', error);
-      Alert.alert('Error', 'Failed to start contract. Please try again.');
+      
+      // Check if this is a "endpoint not found" error
+      if (error.message?.includes('404') || error.message?.includes('Not Found')) {
+        Alert.alert(
+          'Backend Not Ready',
+          'The contract creation endpoint is not yet implemented on the backend. Please implement POST /api/contracts endpoint.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', error.message || 'Failed to start contract. Please try again.');
+      }
     }
   };
 
@@ -223,6 +270,11 @@ export default function ConnectScreen() {
 
     setSubmittingComment(true);
     try {
+      // TODO: Backend Integration - Comment Creation Endpoint
+      // The backend needs to implement: POST /api/comments
+      // Request body: { contractId: string, doulaId: string, parentId: string, comment: string }
+      // Response: { success: boolean, comment: DoulaComment }
+      
       console.log('[Connect] Submitting comment for doula:', doulaId);
       
       const { apiPost } = await import('@/utils/api');
@@ -236,7 +288,7 @@ export default function ConnectScreen() {
       console.log('[Connect] Comment submitted:', response);
       
       if (!response.success) {
-        throw new Error('Failed to submit comment');
+        throw new Error(response.error || 'Failed to submit comment');
       }
       
       const newComment: DoulaComment = {
@@ -260,9 +312,19 @@ export default function ConnectScreen() {
       
       setCommentText('');
       Alert.alert('Success', 'Your comment has been posted!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Connect] Error submitting comment:', error);
-      Alert.alert('Error', 'Failed to submit comment. Please try again.');
+      
+      // Check if this is a "endpoint not found" error
+      if (error.message?.includes('404') || error.message?.includes('Not Found')) {
+        Alert.alert(
+          'Backend Not Ready',
+          'The comment creation endpoint is not yet implemented on the backend. Please implement POST /api/comments endpoint.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', error.message || 'Failed to submit comment. Please try again.');
+      }
     } finally {
       setSubmittingComment(false);
     }

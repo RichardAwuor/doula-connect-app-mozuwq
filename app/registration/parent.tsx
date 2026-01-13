@@ -158,6 +158,11 @@ export default function ParentRegistrationScreen() {
     }
 
     try {
+      // TODO: Backend Integration - User Registration Endpoint
+      // The backend needs to implement: POST /api/users/parent
+      // Request body should include all registration data
+      // Response should return: { success: boolean, userId: string, profile: ParentProfile }
+      
       const { apiPost } = await import('@/utils/api');
       
       const registrationData = {
@@ -180,16 +185,17 @@ export default function ParentRegistrationScreen() {
       
       console.log('[Registration] Sending registration data:', registrationData);
       
+      // Call backend API to create parent profile
       const response = await apiPost('/api/users/parent', registrationData);
       console.log('[Registration] Profile created:', response);
       
       if (!response.success) {
-        throw new Error('Failed to create profile');
+        throw new Error(response.error || 'Failed to create profile');
       }
       
       // Create profile object with response data
       const profile: ParentProfile = {
-        id: response.userId,
+        id: response.userId || `parent_${Date.now()}`, // Fallback ID if backend doesn't return one
         userType: 'parent',
         email: userEmail || '',
         firstName,
@@ -211,9 +217,19 @@ export default function ParentRegistrationScreen() {
       
       setUserProfile(profile);
       router.push('/payment');
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Registration] Error creating profile:', error);
-      Alert.alert('Error', 'Failed to create profile. Please try again.');
+      
+      // Check if this is a "endpoint not found" error
+      if (error.message?.includes('404') || error.message?.includes('Not Found')) {
+        Alert.alert(
+          'Backend Not Ready',
+          'The user registration endpoint is not yet implemented on the backend. Please implement POST /api/users/parent endpoint.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', error.message || 'Failed to create profile. Please try again.');
+      }
     }
   };
 

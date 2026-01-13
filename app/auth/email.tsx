@@ -158,8 +158,41 @@ export default function EmailAuthScreen() {
       codeSent: { en: 'Verification code sent! Check your email.', es: 'Código enviado! Revisa tu correo.' },
       invalidCode: { en: 'Please enter the complete 6-digit code', es: 'Por favor ingrese el código completo de 6 dígitos' },
       checkSpam: { en: 'Check your spam folder if you don&apos;t see the email', es: 'Revisa tu carpeta de spam si no ves el correo' },
+      errorSending: { en: 'Failed to send verification code. Please try again.', es: 'Error al enviar código. Intente de nuevo.' },
+      errorVerifying: { en: 'Invalid verification code. Please try again.', es: 'Código inválido. Intente de nuevo.' },
     };
     return translations[key]?.[language] || key;
+  };
+
+  const parseErrorMessage = (error: any): string => {
+    console.log('[OTP] Parsing error:', error);
+    
+    // If error is a string
+    if (typeof error === 'string') {
+      return error;
+    }
+    
+    // If error has a message property
+    if (error?.message) {
+      // Extract JSON error if present
+      const jsonMatch = error.message.match(/\{.*"error".*\}/);
+      if (jsonMatch) {
+        try {
+          const errorObj = JSON.parse(jsonMatch[0]);
+          return errorObj.error || errorObj.message || error.message;
+        } catch (e) {
+          console.log('[OTP] Failed to parse JSON error:', e);
+        }
+      }
+      return error.message;
+    }
+    
+    // If error is an object with error property
+    if (error?.error) {
+      return error.error;
+    }
+    
+    return 'An unexpected error occurred';
   };
 
   const handleSendOTP = async () => {
@@ -181,7 +214,7 @@ export default function EmailAuthScreen() {
       console.log('[OTP] Response:', response);
       
       if (!response.success) {
-        throw new Error(response.message || 'Failed to send OTP');
+        throw new Error(response.message || response.error || 'Failed to send OTP');
       }
       
       setOtpSent(true);
@@ -201,7 +234,7 @@ export default function EmailAuthScreen() {
       Alert.alert('Success', t('codeSent'));
     } catch (error: any) {
       console.error('[OTP] Error sending OTP:', error);
-      const errorMessage = error?.message || 'Failed to send verification code. Please try again.';
+      const errorMessage = parseErrorMessage(error);
       setError(errorMessage);
       Alert.alert('Error', errorMessage);
     } finally {
@@ -254,8 +287,8 @@ export default function EmailAuthScreen() {
       });
       console.log('[OTP] Verification response:', response);
       
-      if (!response.success || !response.verified) {
-        throw new Error(response.message || 'Invalid OTP');
+      if (!response.success) {
+        throw new Error(response.message || response.error || 'Invalid OTP');
       }
       
       setUserEmail(email);
@@ -269,7 +302,7 @@ export default function EmailAuthScreen() {
       }
     } catch (error: any) {
       console.error('[OTP] Error verifying OTP:', error);
-      const errorMessage = error?.message || 'Invalid verification code. Please try again.';
+      const errorMessage = parseErrorMessage(error);
       setError(errorMessage);
       Alert.alert('Error', errorMessage);
       

@@ -46,6 +46,11 @@ export default function ProfileScreen() {
     if (!userProfile) return;
     
     try {
+      // TODO: Backend Integration - Profile Update Endpoint
+      // The backend needs to implement: PUT /api/users/profile/:id
+      // Request body should include updated profile data
+      // Response should return: { success: boolean, profile: UserProfile }
+      
       const { apiPut } = await import('@/utils/api');
       
       // Prepare update data based on user type
@@ -84,14 +89,24 @@ export default function ProfileScreen() {
       console.log('[Profile] Update response:', response);
       
       if (!response.success) {
-        throw new Error('Failed to update profile');
+        throw new Error(response.error || 'Failed to update profile');
       }
       
       setIsEditing(false);
       Alert.alert('Success', 'Profile updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Profile] Error updating profile:', error);
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      
+      // Check if this is a "endpoint not found" error
+      if (error.message?.includes('404') || error.message?.includes('Not Found')) {
+        Alert.alert(
+          'Backend Not Ready',
+          'The profile update endpoint is not yet implemented on the backend. Please implement PUT /api/users/profile/:id endpoint.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', error.message || 'Failed to update profile. Please try again.');
+      }
     }
   };
 

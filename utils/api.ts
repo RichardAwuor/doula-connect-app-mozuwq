@@ -1,3 +1,4 @@
+
 /**
  * API Utilities for Doula Connect
  *
@@ -18,49 +19,155 @@
  * 4. Use authenticatedApiCall() for requests requiring auth (token auto-retrieved)
  * 5. Backend URL is automatically configured in app.json when backend deploys
  *
- * BACKEND API ENDPOINTS NEEDED:
+ * ============================================================================
+ * BACKEND API ENDPOINTS - IMPLEMENTATION STATUS
+ * ============================================================================
  * 
- * Authentication:
- * - POST /api/auth/send-otp
+ * ✅ IMPLEMENTED (Working):
+ * 
+ * Authentication (OTP-based):
+ * - POST /auth/send-otp
  *   Body: { email: string }
+ *   Response: { success: boolean, message: string, expiresIn: number }
+ * 
+ * - POST /auth/verify-otp
+ *   Body: { email: string, code: string }
  *   Response: { success: boolean, message: string }
  * 
- * - POST /api/auth/verify-otp
- *   Body: { email: string, otp: string }
- *   Response: { success: boolean, verified: boolean, message: string }
+ * - DELETE /auth/cleanup-otps
+ *   Response: { success: boolean, message: string }
  * 
- * User Registration:
- * - POST /api/users/doula
- *   Body: DoulaProfile object
- *   Response: { success: boolean, userId: string, profile: DoulaProfile }
+ * ============================================================================
+ * ❌ NOT IMPLEMENTED (Required for full functionality):
+ * ============================================================================
+ * 
+ * User Registration & Profile Management:
  * 
  * - POST /api/users/parent
- *   Body: ParentProfile object
+ *   Body: {
+ *     email: string,
+ *     firstName: string,
+ *     lastName: string,
+ *     state: string,
+ *     town: string,
+ *     zipCode: string,
+ *     serviceCategories: Array<'birth' | 'postpartum'>,
+ *     financingType: Array<'self' | 'carrot' | 'medicaid'>,
+ *     servicePeriodStart?: string (ISO date),
+ *     servicePeriodEnd?: string (ISO date),
+ *     preferredLanguages?: Array<string>,
+ *     desiredDays?: Array<string>,
+ *     desiredStartTime?: string (ISO date),
+ *     desiredEndTime?: string (ISO date),
+ *     acceptedTerms: boolean
+ *   }
  *   Response: { success: boolean, userId: string, profile: ParentProfile }
  * 
- * User Profile:
- * - PUT /api/users/profile
- *   Body: UserProfile object
+ * - POST /api/users/doula
+ *   Body: {
+ *     email: string,
+ *     firstName: string,
+ *     lastName: string,
+ *     state: string,
+ *     town: string,
+ *     zipCode: string,
+ *     paymentPreferences: Array<'self' | 'carrot' | 'medicaid'>,
+ *     driveDistance: number,
+ *     spokenLanguages: Array<string>,
+ *     hourlyRateMin: number,
+ *     hourlyRateMax: number,
+ *     serviceCategories: Array<'birth' | 'postpartum'>,
+ *     certifications: Array<string>,
+ *     profilePictureUrl: string,
+ *     certificationDocuments?: Array<string>,
+ *     referees?: Array<{ firstName: string, lastName: string, email: string }>,
+ *     acceptedTerms: boolean
+ *   }
+ *   Response: { success: boolean, userId: string, profile: DoulaProfile }
+ * 
+ * - PUT /api/users/profile/:id
+ *   Body: Partial profile update data (varies by user type)
  *   Response: { success: boolean, profile: UserProfile }
- *   Auth: Required
  * 
- * Matching:
+ * File Upload:
+ * 
+ * - POST /api/upload/profile-picture
+ *   Body: multipart/form-data with 'image' field
+ *   Response: { success: boolean, url: string }
+ * 
+ * - POST /api/upload/certification
+ *   Body: multipart/form-data with 'document' field
+ *   Response: { success: boolean, url: string }
+ * 
+ * Matching System:
+ * 
  * - GET /api/matches?userId={userId}&userType={userType}
- *   Response: { matches: Array<DoulaProfile | ParentProfile> }
- *   Auth: Required
+ *   Query params: userId (string), userType ('parent' | 'doula')
+ *   Response: { success: boolean, matches: Array<DoulaProfile | ParentProfile> }
+ *   Note: Should implement matching algorithm based on:
+ *     - Location (state, town, drive distance for doulas)
+ *     - Service categories (birth/postpartum)
+ *     - Languages
+ *     - Financing/payment preferences
+ *     - Availability (for parents)
  * 
- * Payments:
+ * Contract Management:
+ * 
+ * - POST /api/contracts
+ *   Body: { parentId: string, doulaId: string, startDate: string }
+ *   Response: { success: boolean, contract: Contract }
+ * 
+ * - GET /api/contracts/user/:userId
+ *   Response: { success: boolean, contracts: Array<Contract> }
+ *   Note: Contract should have status field: 'active' | 'completed' | 'cancelled'
+ * 
+ * Comments & Reviews:
+ * 
+ * - POST /api/comments
+ *   Body: { contractId: string, doulaId: string, parentId: string, comment: string }
+ *   Response: { success: boolean, comment: DoulaComment }
+ *   Note: Should validate that:
+ *     - Contract exists and is completed
+ *     - Parent hasn't already commented on this contract
+ *     - Comment is <= 160 characters
+ * 
+ * - GET /api/comments/doula/:doulaId
+ *   Response: { success: boolean, comments: Array<DoulaComment> }
+ *   Note: DoulaComment should include:
+ *     - id, contractId, doulaId, parentId, parentName, comment, createdAt
+ * 
+ * Payment Processing (Stripe Integration):
+ * 
  * - POST /api/payments/create-checkout-session
- *   Body: { userId: string, userType: string, amount: number, period: string }
- *   Response: { sessionId: string, checkoutUrl: string }
+ *   Body: { userId: string, userType: string, email: string }
+ *   Response: { success: boolean, checkoutUrl: string, sessionId: string }
+ *   Note: Should create Stripe Checkout session with:
+ *     - Amount: $99.00 USD
+ *     - Period: Annual for parents, Monthly for doulas
+ *     - Success URL: {frontend_url}/payment-success?session_id={CHECKOUT_SESSION_ID}
+ *     - Cancel URL: {frontend_url}/payment
  * 
  * - GET /api/payments/status/:sessionId
- *   Response: { status: 'pending' | 'completed' | 'failed' }
+ *   Response: { success: boolean, status: 'pending' | 'completed' | 'failed' }
  * 
  * - PUT /api/users/subscription
  *   Body: { userId: string, subscriptionActive: boolean }
  *   Response: { success: boolean }
- *   Auth: Required
+ * 
+ * ============================================================================
+ * DATABASE SCHEMA RECOMMENDATIONS:
+ * ============================================================================
+ * 
+ * Tables needed:
+ * 1. users - Base user info (id, email, userType, createdAt)
+ * 2. parent_profiles - Parent-specific data
+ * 3. doula_profiles - Doula-specific data
+ * 4. contracts - Parent-doula contracts
+ * 5. comments - Doula reviews/comments
+ * 6. subscriptions - Payment/subscription status
+ * 7. otp_codes - Already implemented for OTP auth
+ * 
+ * ============================================================================
  */
 
 import Constants from "expo-constants";
@@ -139,15 +246,36 @@ export const apiCall = async <T = any>(
       },
     });
 
+    const text = await response.text();
+    console.log("[API] Response status:", response.status);
+    console.log("[API] Response text:", text);
+
     if (!response.ok) {
-      const text = await response.text();
-      console.error("[API] Error response:", response.status, text);
-      throw new Error(`API error: ${response.status} - ${text}`);
+      // Try to parse as JSON first
+      let errorMessage = text;
+      try {
+        const errorData = JSON.parse(text);
+        errorMessage = errorData.error || errorData.message || text;
+      } catch (e) {
+        // If not JSON, check if it's HTML error page
+        if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+          errorMessage = 'Server error occurred. Please try again later.';
+        }
+      }
+      
+      console.error("[API] Error response:", response.status, errorMessage);
+      throw new Error(errorMessage);
     }
 
-    const data = await response.json();
-    console.log("[API] Success:", data);
-    return data;
+    // Parse successful response
+    try {
+      const data = JSON.parse(text);
+      console.log("[API] Success:", data);
+      return data;
+    } catch (e) {
+      console.error("[API] Failed to parse response as JSON:", text);
+      throw new Error("Invalid response from server");
+    }
   } catch (error) {
     console.error("[API] Request failed:", error);
     throw error;

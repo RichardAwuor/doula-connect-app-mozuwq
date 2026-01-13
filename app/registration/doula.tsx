@@ -244,51 +244,79 @@ export default function DoulaRegistrationScreen() {
     }
 
     try {
-      const { apiPost } = await import('@/utils/api');
+      // TODO: Backend Integration - File Upload Endpoints
+      // The backend needs to implement:
+      // 1. POST /api/upload/profile-picture - Upload profile picture
+      //    Request: multipart/form-data with 'image' field
+      //    Response: { success: boolean, url: string }
+      // 2. POST /api/upload/certification - Upload certification documents
+      //    Request: multipart/form-data with 'document' field
+      //    Response: { success: boolean, url: string }
       
-      // First, upload profile picture
-      console.log('[Registration] Uploading profile picture...');
-      const formData = new FormData();
-      formData.append('image', {
-        uri: profilePicture.uri,
-        name: profilePicture.name,
-        type: profilePicture.type,
-      } as any);
+      const { apiPost, BACKEND_URL } = await import('@/utils/api');
       
-      const uploadResponse = await fetch(`${await import('@/utils/api').then(m => m.BACKEND_URL)}/api/upload/profile-picture`, {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload profile picture');
-      }
-      
-      const uploadData = await uploadResponse.json();
-      const profilePictureUrl = uploadData.url;
-      console.log('[Registration] Profile picture uploaded:', profilePictureUrl);
-      
-      // Upload certification documents if any
+      let profilePictureUrl = profilePicture.uri; // Use local URI as fallback
       const certificationUrls: string[] = [];
-      for (const doc of certificationDocuments) {
-        console.log('[Registration] Uploading certification document:', doc.name);
-        const certFormData = new FormData();
-        certFormData.append('document', {
-          uri: doc.uri,
-          name: doc.name,
-          type: doc.type,
+      
+      // Try to upload profile picture
+      try {
+        console.log('[Registration] Uploading profile picture...');
+        const formData = new FormData();
+        formData.append('image', {
+          uri: profilePicture.uri,
+          name: profilePicture.name,
+          type: profilePicture.type,
         } as any);
         
-        const certUploadResponse = await fetch(`${await import('@/utils/api').then(m => m.BACKEND_URL)}/api/upload/certification`, {
+        const uploadResponse = await fetch(`${BACKEND_URL}/api/upload/profile-picture`, {
           method: 'POST',
-          body: certFormData,
+          body: formData,
         });
         
-        if (certUploadResponse.ok) {
-          const certData = await certUploadResponse.json();
-          certificationUrls.push(certData.url);
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json();
+          profilePictureUrl = uploadData.url;
+          console.log('[Registration] Profile picture uploaded:', profilePictureUrl);
+        } else {
+          console.warn('[Registration] Profile picture upload failed, using local URI');
+        }
+      } catch (uploadError) {
+        console.warn('[Registration] Profile picture upload error:', uploadError);
+        // Continue with local URI
+      }
+      
+      // Try to upload certification documents
+      for (const doc of certificationDocuments) {
+        try {
+          console.log('[Registration] Uploading certification document:', doc.name);
+          const certFormData = new FormData();
+          certFormData.append('document', {
+            uri: doc.uri,
+            name: doc.name,
+            type: doc.type,
+          } as any);
+          
+          const certUploadResponse = await fetch(`${BACKEND_URL}/api/upload/certification`, {
+            method: 'POST',
+            body: certFormData,
+          });
+          
+          if (certUploadResponse.ok) {
+            const certData = await certUploadResponse.json();
+            certificationUrls.push(certData.url);
+          } else {
+            certificationUrls.push(doc.uri); // Use local URI as fallback
+          }
+        } catch (certError) {
+          console.warn('[Registration] Certification upload error:', certError);
+          certificationUrls.push(doc.uri); // Use local URI as fallback
         }
       }
+      
+      // TODO: Backend Integration - Doula Registration Endpoint
+      // The backend needs to implement: POST /api/users/doula
+      // Request body should include all registration data
+      // Response should return: { success: boolean, userId: string, profile: DoulaProfile }
       
       const registrationData = {
         email: userEmail || '',
@@ -312,16 +340,17 @@ export default function DoulaRegistrationScreen() {
       
       console.log('[Registration] Sending registration data:', registrationData);
       
+      // Call backend API to create doula profile
       const response = await apiPost('/api/users/doula', registrationData);
       console.log('[Registration] Profile created:', response);
       
       if (!response.success) {
-        throw new Error('Failed to create profile');
+        throw new Error(response.error || 'Failed to create profile');
       }
       
       // Create profile object with response data
       const profile: DoulaProfile = {
-        id: response.userId,
+        id: response.userId || `doula_${Date.now()}`, // Fallback ID if backend doesn't return one
         userType: 'doula',
         email: userEmail || '',
         firstName,
@@ -348,9 +377,19 @@ export default function DoulaRegistrationScreen() {
       
       setUserProfile(profile);
       router.push('/payment');
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Registration] Error creating profile:', error);
-      Alert.alert('Error', 'Failed to create profile. Please try again.');
+      
+      // Check if this is a "endpoint not found" error
+      if (error.message?.includes('404') || error.message?.includes('Not Found')) {
+        Alert.alert(
+          'Backend Not Ready',
+          'The user registration endpoint is not yet implemented on the backend. Please implement POST /api/users/doula endpoint.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', error.message || 'Failed to create profile. Please try again.');
+      }
     }
   };
 

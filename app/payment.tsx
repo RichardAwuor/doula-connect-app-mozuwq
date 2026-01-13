@@ -35,6 +35,12 @@ export default function PaymentScreen() {
     setProcessing(true);
 
     try {
+      // TODO: Backend Integration - Payment Checkout Endpoint
+      // The backend needs to implement: POST /api/payments/create-checkout-session
+      // Request body: { userId: string, userType: string, email: string }
+      // Response: { success: boolean, checkoutUrl: string, sessionId: string }
+      // This should create a Stripe Checkout session and return the URL
+      
       const response = await apiPost('/api/payments/create-checkout-session', {
         userId: userProfile.id,
         userType: userProfile.userType,
@@ -48,12 +54,23 @@ export default function PaymentScreen() {
           window.location.href = response.checkoutUrl;
         }
       } else {
-        Alert.alert('Error', 'Failed to create checkout session');
+        Alert.alert('Error', response.error || 'Failed to create checkout session');
         setProcessing(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Payment Web] Error:', error);
-      Alert.alert('Error', 'Failed to initialize payment. Please try again.');
+      
+      // Check if this is a "endpoint not found" error
+      if (error.message?.includes('404') || error.message?.includes('Not Found')) {
+        Alert.alert(
+          'Backend Not Ready',
+          'The payment checkout endpoint is not yet implemented on the backend. Please implement POST /api/payments/create-checkout-session endpoint with Stripe integration.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', error.message || 'Failed to initialize payment. Please try again.');
+      }
+      
       setProcessing(false);
     }
   };
