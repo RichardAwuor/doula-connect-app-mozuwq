@@ -1,22 +1,8 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq } from 'drizzle-orm';
-import Stripe from 'stripe';
 import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
-
-// Stripe client initialization
-let stripe: Stripe | null = null;
-
-function getStripeClient(): Stripe {
-  if (!stripe) {
-    const apiKey = process.env.STRIPE_SECRET_KEY;
-    if (!apiKey) {
-      throw new Error('STRIPE_SECRET_KEY environment variable is not set');
-    }
-    stripe = new Stripe(apiKey);
-  }
-  return stripe;
-}
+import { getStripeClient, getWebhookSecret, isStripeAvailable } from '../services/stripe-service.js';
 
 // Pricing constants
 const PARENT_ANNUAL_PRICE = 9900; // $99 in cents
@@ -90,6 +76,15 @@ export function register(app: App, fastify: FastifyInstance) {
     }
 
     try {
+      // Check if Stripe is available
+      if (!isStripeAvailable()) {
+        app.logger.error('Stripe service is not available - payment processing is disabled');
+        await reply.status(503).send({
+          error: 'Payment processing is currently unavailable. Please try again later.',
+        });
+        return;
+      }
+
       const stripeClient = getStripeClient();
 
       // Validate plan type based on user type
@@ -177,7 +172,7 @@ export function register(app: App, fastify: FastifyInstance) {
 
     try {
       const stripeClient = getStripeClient();
-      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      const webhookSecret = getWebhookSecret();
 
       if (!webhookSecret) {
         app.logger.warn('STRIPE_WEBHOOK_SECRET not configured');
