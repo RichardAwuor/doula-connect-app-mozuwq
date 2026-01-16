@@ -32,7 +32,7 @@ export default function PaymentScreen() {
   const subscriptionPeriod = isParent ? 'Annual' : 'Monthly';
 
   const handlePayment = async () => {
-    console.log('[Payment] Creating payment session...');
+    console.log('[Payment] Creating PayPal payment session...');
     setProcessing(true);
 
     try {
@@ -43,13 +43,13 @@ export default function PaymentScreen() {
         email: userProfile.email,
       });
       
-      console.log('[Payment] Payment session created:', response);
+      console.log('[Payment] PayPal payment session created:', response);
 
-      if (response.success && response.checkoutUrl) {
-        console.log('[Payment] Opening Stripe Checkout:', response.checkoutUrl);
+      if (response.success && response.approvalUrl) {
+        console.log('[Payment] Opening PayPal Checkout:', response.approvalUrl);
         
-        // Open Stripe Checkout in browser
-        const result = await WebBrowser.openBrowserAsync(response.checkoutUrl);
+        // Open PayPal Checkout in browser
+        const result = await WebBrowser.openBrowserAsync(response.approvalUrl);
         console.log('[Payment] Browser result:', result);
         
         // After user closes the browser, check subscription status
@@ -117,30 +117,16 @@ export default function PaymentScreen() {
     } catch (error: any) {
       console.error('[Payment] Error:', error);
       
-      // Check if it's a 503 error (service unavailable)
-      if (error.message && error.message.includes('503')) {
-        Alert.alert(
-          'Payment Configuration Required',
-          'The payment system needs to be configured with your Stripe secret key. Please contact support or check the backend configuration.\n\nYour publishable key is set, but the backend needs the corresponding secret key (starts with sk_live_...).',
-          [
-            {
-              text: 'OK',
-              onPress: () => setProcessing(false)
-            }
-          ]
-        );
-      } else {
-        Alert.alert(
-          'Error',
-          error.message || 'Payment processing is currently unavailable. Please try again later.',
-          [
-            {
-              text: 'OK',
-              onPress: () => setProcessing(false)
-            }
-          ]
-        );
-      }
+      Alert.alert(
+        'Error',
+        error.message || 'Payment processing is currently unavailable. Please try again later.',
+        [
+          {
+            text: 'OK',
+            onPress: () => setProcessing(false)
+          }
+        ]
+      );
       setProcessing(false);
     }
   };
@@ -204,7 +190,7 @@ export default function PaymentScreen() {
               color={colors.primary}
             />
             <View style={styles.paymentMethodText}>
-              <Text style={styles.paymentMethodTitle}>Secure Payment via Stripe</Text>
+              <Text style={styles.paymentMethodTitle}>Secure Payment via PayPal</Text>
               <Text style={styles.paymentMethodSubtitle}>
                 Your payment information is encrypted and secure
               </Text>
@@ -221,7 +207,7 @@ export default function PaymentScreen() {
               color={colors.success}
             />
             <Text style={styles.securityText}>
-              Secure payment processing powered by Stripe
+              Secure payment processing powered by PayPal
             </Text>
           </View>
         </View>
@@ -234,7 +220,7 @@ export default function PaymentScreen() {
             color={colors.primary}
           />
           <Text style={styles.webNoticeText}>
-            You will be redirected to Stripe Checkout to complete your payment
+            You will be redirected to PayPal to complete your payment
           </Text>
         </View>
 
