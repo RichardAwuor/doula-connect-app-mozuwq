@@ -19,18 +19,18 @@ export type App = typeof app;
 
 // Initialize Stripe before starting server
 app.logger.info('Initializing Stripe payment service...');
-const stripeInit = initializeStripe();
+const stripeInit = initializeStripe(app.logger);
 
 if (stripeInit.success) {
-  app.logger.info('✓ Stripe payment service initialized successfully');
+  app.logger.info('✓ Stripe payment service initialized successfully - Payment processing is ENABLED');
 } else {
-  app.logger.warn(`⚠ Stripe initialization warning: ${stripeInit.error}`);
-  app.logger.warn('Payment processing features will be unavailable');
+  app.logger.error(`✗ Stripe initialization failed: ${stripeInit.error}`);
+  app.logger.warn('⚠ Payment processing features will be UNAVAILABLE until STRIPE_SECRET_KEY is configured');
 }
 
 // Log Stripe status
 const stripeStatus = getStripeStatus();
-app.logger.debug(`Stripe status: ${JSON.stringify(stripeStatus)}`);
+app.logger.debug({ stripeStatus }, 'Stripe initialization details');
 
 // Register routes - add your route modules here
 // IMPORTANT: Always use registration functions to avoid circular dependency issues

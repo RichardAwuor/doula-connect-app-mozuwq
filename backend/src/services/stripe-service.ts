@@ -13,7 +13,7 @@ let stripeError: string | null = null;
  * Initialize and validate Stripe configuration
  * Should be called during server startup
  */
-export function initializeStripe(): { success: boolean; error?: string } {
+export function initializeStripe(logger?: any): { success: boolean; error?: string } {
   if (stripeInitialized) {
     return stripeClient ? { success: true } : { success: false, error: stripeError || 'Stripe not initialized' };
   }
@@ -23,8 +23,11 @@ export function initializeStripe(): { success: boolean; error?: string } {
 
   // Validate API key
   if (!apiKey) {
-    stripeError = 'STRIPE_SECRET_KEY environment variable is not set';
+    stripeError = 'STRIPE_SECRET_KEY environment variable is not set. Payment processing is disabled.';
     stripeInitialized = true;
+    if (logger) {
+      logger.error('Stripe initialization failed: STRIPE_SECRET_KEY is not configured');
+    }
     return { success: false, error: stripeError };
   }
 
@@ -32,6 +35,9 @@ export function initializeStripe(): { success: boolean; error?: string } {
   if (!webhookSecret && process.env.NODE_ENV === 'production') {
     stripeError = 'STRIPE_WEBHOOK_SECRET environment variable is required in production';
     stripeInitialized = true;
+    if (logger) {
+      logger.warn('Stripe webhook secret not configured - webhooks may not work in production');
+    }
     return { success: false, error: stripeError };
   }
 
@@ -40,10 +46,17 @@ export function initializeStripe(): { success: boolean; error?: string } {
     stripeClient = new Stripe(apiKey);
     stripeInitialized = true;
 
+    if (logger) {
+      logger.info('Stripe client successfully initialized with API key');
+    }
+
     return { success: true };
   } catch (error) {
     stripeError = `Failed to initialize Stripe: ${error instanceof Error ? error.message : String(error)}`;
     stripeInitialized = true;
+    if (logger) {
+      logger.error({ err: error }, 'Stripe initialization failed');
+    }
     return { success: false, error: stripeError };
   }
 }
