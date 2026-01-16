@@ -116,7 +116,31 @@ export default function PaymentScreen() {
       }
     } catch (error: any) {
       console.error('[Payment Native] Error:', error);
-      Alert.alert('Error', error.message || 'Failed to initialize payment. Please try again.');
+      
+      // Check if it's a 503 error (service unavailable)
+      if (error.message && error.message.includes('503')) {
+        Alert.alert(
+          'Payment Configuration Required',
+          'The payment system needs to be configured with your Stripe secret key. Please contact support or check the backend configuration.\n\nYour publishable key is set, but the backend needs the corresponding secret key (starts with sk_live_...).',
+          [
+            {
+              text: 'OK',
+              onPress: () => setProcessing(false)
+            }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Error',
+          error.message || 'Payment processing is currently unavailable. Please try again later.',
+          [
+            {
+              text: 'OK',
+              onPress: () => setProcessing(false)
+            }
+          ]
+        );
+      }
       setProcessing(false);
     }
   };
