@@ -130,8 +130,9 @@ export const comments = pgTable('comments', {
 export const subscriptions = pgTable('subscriptions', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
-  stripeCustomerId: text('stripe_customer_id'),
-  stripeSubscriptionId: text('stripe_subscription_id'),
+  paypalCustomerId: text('paypal_customer_id'),
+  paypalOrderId: text('paypal_order_id'),
+  paypalSubscriptionId: text('paypal_subscription_id'),
   status: text('status').notNull(), // 'active', 'cancelled', 'expired'
   planType: text('plan_type').notNull(), // 'annual', 'monthly'
   amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),

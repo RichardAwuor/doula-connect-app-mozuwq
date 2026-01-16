@@ -9,7 +9,7 @@ import * as contractRoutes from './routes/contracts.js';
 import * as commentRoutes from './routes/comments.js';
 import * as paymentRoutes from './routes/payments.js';
 import * as healthRoutes from './routes/health.js';
-import { initializeStripe, getStripeStatus } from './services/stripe-service.js';
+import { initializePayPal, getPayPalStatus } from './services/paypal-service.js';
 
 // Create application with schema for full database type support
 export const app = await createApplication(schema);
@@ -17,20 +17,20 @@ export const app = await createApplication(schema);
 // Export App type for use in route files
 export type App = typeof app;
 
-// Initialize Stripe before starting server
-app.logger.info('Initializing Stripe payment service...');
-const stripeInit = initializeStripe(app.logger);
+// Initialize PayPal before starting server
+app.logger.info('Initializing PayPal payment service...');
+const paypalInit = initializePayPal(app.logger);
 
-if (stripeInit.success) {
-  app.logger.info('✓ Stripe payment service initialized successfully - Payment processing is ENABLED');
+if (paypalInit.success) {
+  app.logger.info('✓ PayPal payment service initialized successfully - Payment processing is ENABLED');
 } else {
-  app.logger.error(`✗ Stripe initialization failed: ${stripeInit.error}`);
-  app.logger.warn('⚠ Payment processing features will be UNAVAILABLE until STRIPE_SECRET_KEY is configured');
+  app.logger.error(`✗ PayPal initialization failed: ${paypalInit.error}`);
+  app.logger.warn('⚠ Payment processing features will be UNAVAILABLE until PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET are configured');
 }
 
-// Log Stripe status
-const stripeStatus = getStripeStatus();
-app.logger.debug({ stripeStatus }, 'Stripe initialization details');
+// Log PayPal status
+const paypalStatus = getPayPalStatus();
+app.logger.debug({ paypalStatus }, 'PayPal initialization details');
 
 // Register routes - add your route modules here
 // IMPORTANT: Always use registration functions to avoid circular dependency issues

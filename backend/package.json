@@ -18,6 +18,7 @@
     "@fastify/multipart": "^9.3.0",
     "@fastify/swagger": "^9.5.2",
     "@neondatabase/serverless": "^1.0.2",
+    "@paypal/checkout-server-sdk": "^1.0.3",
     "@specific-dev/framework": "1.20.2",
     "better-auth": "1.4.5",
     "commander": "^12.1.0",

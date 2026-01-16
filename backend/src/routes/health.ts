@@ -1,11 +1,11 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { getStripeStatus } from '../services/stripe-service.js';
+import { getPayPalStatus } from '../services/paypal-service.js';
 import type { App } from '../index.js';
 
 export function register(app: App, fastify: FastifyInstance) {
   /**
    * Application status endpoint
-   * Returns application status including Stripe configuration
+   * Returns application status including PayPal configuration
    */
   fastify.get('/status', {
     schema: {
@@ -22,7 +22,7 @@ export function register(app: App, fastify: FastifyInstance) {
               type: 'object',
               properties: {
                 database: { type: 'string', enum: ['ready', 'unavailable'] },
-                stripe: {
+                paypal: {
                   type: 'object',
                   properties: {
                     initialized: { type: 'boolean' },
@@ -37,10 +37,10 @@ export function register(app: App, fastify: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
-    const stripeStatus = getStripeStatus();
+    const paypalStatus = getPayPalStatus();
 
     // Determine overall status
-    const isHealthy = stripeStatus.available;
+    const isHealthy = paypalStatus.available;
     const status = isHealthy ? 'healthy' : 'degraded';
 
     await reply.status(isHealthy ? 200 : 200).send({
@@ -48,26 +48,26 @@ export function register(app: App, fastify: FastifyInstance) {
       timestamp: new Date().toISOString(),
       services: {
         database: 'ready',
-        stripe: {
-          initialized: stripeStatus.initialized,
-          available: stripeStatus.available,
-          error: stripeStatus.error || undefined,
+        paypal: {
+          initialized: paypalStatus.initialized,
+          available: paypalStatus.available,
+          error: paypalStatus.error || undefined,
         },
       },
     });
   });
 
   /**
-   * Status endpoint for Stripe configuration
-   * Returns detailed information about Stripe setup
+   * Status endpoint for PayPal configuration
+   * Returns detailed information about PayPal setup
    */
-  fastify.get('/status/stripe', {
+  fastify.get('/status/paypal', {
     schema: {
-      description: 'Get Stripe payment service status',
+      description: 'Get PayPal payment service status',
       tags: ['status'],
       response: {
         200: {
-          description: 'Stripe service status',
+          description: 'PayPal service status',
           type: 'object',
           properties: {
             initialized: { type: 'boolean' },
@@ -79,21 +79,21 @@ export function register(app: App, fastify: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
-    const stripeStatus = getStripeStatus();
+    const paypalStatus = getPayPalStatus();
 
     let message = '';
-    if (stripeStatus.available) {
-      message = 'Stripe payment processing is operational';
-    } else if (stripeStatus.initialized && !stripeStatus.available) {
-      message = `Stripe is not available: ${stripeStatus.error}`;
+    if (paypalStatus.available) {
+      message = 'PayPal payment processing is operational';
+    } else if (paypalStatus.initialized && !paypalStatus.available) {
+      message = `PayPal is not available: ${paypalStatus.error}`;
     } else {
-      message = 'Stripe service has not been initialized';
+      message = 'PayPal service has not been initialized';
     }
 
     await reply.status(200).send({
-      initialized: stripeStatus.initialized,
-      available: stripeStatus.available,
-      error: stripeStatus.error,
+      initialized: paypalStatus.initialized,
+      available: paypalStatus.available,
+      error: paypalStatus.error,
       message,
     });
   });

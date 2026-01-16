@@ -2,11 +2,12 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import type { App } from '../index.js';
-import { getStripeClient, getWebhookSecret, isStripeAvailable, getStripeStatus } from '../services/stripe-service.js';
+import { getPayPalClient, isPayPalAvailable, getPayPalStatus, getWebhookVerificationToken } from '../services/paypal-service.js';
+import * as checkoutNodeJssdk from '@paypal/checkout-server-sdk';
 
-// Pricing constants
-const PARENT_ANNUAL_PRICE = 9900; // $99 in cents
-const DOULA_MONTHLY_PRICE = 9900; // $99 in cents
+// Pricing constants (in dollars)
+const PARENT_ANNUAL_PRICE = '99.00';
+const DOULA_MONTHLY_PRICE = '99.00';
 
 interface CreatePaymentSessionRequest {
   userId: string;
@@ -25,11 +26,11 @@ interface UpdateSubscriptionRequest {
 
 export function register(app: App, fastify: FastifyInstance) {
   /**
-   * Create a payment session for subscription
+   * Create a payment session (PayPal order) for subscription
    */
   fastify.post('/payments/create-session', {
     schema: {
-      description: 'Create a payment session for subscription',
+      description: 'Create a PayPal order for subscription',
       tags: ['payments'],
       body: {
         type: 'object',
@@ -43,13 +44,12 @@ export function register(app: App, fastify: FastifyInstance) {
       },
       response: {
         200: {
-          description: 'Payment session created',
+          description: 'PayPal order created',
           type: 'object',
           properties: {
             success: { type: 'boolean' },
-            sessionId: { type: 'string' },
-            clientSecret: { type: 'string' },
-            checkoutUrl: { type: 'string' },
+            orderId: { type: 'string' },
+            approvalUrl: { type: 'string' },
           },
         },
         400: {
@@ -57,10 +57,15 @@ export function register(app: App, fastify: FastifyInstance) {
           type: 'object',
           properties: { error: { type: 'string' } },
         },
+        503: {
+          description: 'Service unavailable',
+          type: 'object',
+          properties: { error: { type: 'string' }, details: { type: 'string' } },
+        },
         500: {
           description: 'Internal server error',
           type: 'object',
-          properties: { error: { type: 'string' } },
+          properties: { error: { type: 'string' }, details: { type: 'string' } },
         },
       },
     },
@@ -70,7 +75,7 @@ export function register(app: App, fastify: FastifyInstance) {
   ): Promise<void> => {
     const { userId, userType, planType, email } = request.body;
 
-    app.logger.info({ userId, userType, planType, email }, 'Payment session requested');
+    app.logger.info({ userId, userType, planType, email }, 'PayPal order requested');
 
     if (!userId || !userType || !planType || !email) {
       app.logger.warn({ userId, userType, planType, email }, 'Missing required fields in payment request');
@@ -79,18 +84,16 @@ export function register(app: App, fastify: FastifyInstance) {
     }
 
     try {
-      // Check if Stripe is available
-      if (!isStripeAvailable()) {
-        const stripeStatus = getStripeStatus();
-        app.logger.error({ stripeStatus }, 'Stripe service is not available - payment processing is disabled');
+      // Check if PayPal is available
+      if (!isPayPalAvailable()) {
+        const paypalStatus = getPayPalStatus();
+        app.logger.error({ paypalStatus }, 'PayPal service is not available - payment processing is disabled');
         await reply.status(503).send({
-          error: 'Payment processing is currently unavailable. Stripe API key not configured.',
-          details: stripeStatus.error,
+          error: 'Payment processing is currently unavailable. PayPal credentials not configured.',
+          details: paypalStatus.error,
         });
         return;
       }
-
-      const stripeClient = getStripeClient();
 
       // Validate plan type based on user type
       if (userType === 'parent' && planType !== 'annual') {
@@ -103,70 +106,104 @@ export function register(app: App, fastify: FastifyInstance) {
         return;
       }
 
-      const amount = userType === 'parent' ? PARENT_ANNUAL_PRICE : DOULA_MONTHLY_PRICE;
-      const planName = userType === 'parent' ? 'Parent Annual Plan' : 'Doula Monthly Plan';
+      const price = userType === 'parent' ? PARENT_ANNUAL_PRICE : DOULA_MONTHLY_PRICE;
+      const planName = userType === 'parent' ? 'Parent Annual Plan ($99/year)' : 'Doula Monthly Plan ($99/month)';
+      const description = userType === 'parent'
+        ? 'Annual subscription to Doula Connect platform for parents'
+        : 'Monthly subscription to Doula Connect platform for doulas';
 
       app.logger.info(
-        { userType, planType, amount, planName, email },
-        'Creating Stripe checkout session'
+        { userType, planType, price, planName, email },
+        'Creating PayPal order'
       );
 
-      // Create Stripe payment session
-      const session = await stripeClient.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items: [
+      const paypalClient = getPayPalClient();
+      const orderRequest = new checkoutNodeJssdk.orders.OrdersCreateRequest();
+
+      orderRequest.headers['prefer'] = 'return=representation';
+      orderRequest.body = {
+        intent: 'CAPTURE',
+        purchase_units: [
           {
-            price_data: {
-              currency: 'usd',
-              product_data: {
-                name: planName,
+            reference_id: userId,
+            amount: {
+              currency_code: 'USD',
+              value: price,
+              breakdown: {
+                item_total: {
+                  currency_code: 'USD',
+                  value: price,
+                },
               },
-              unit_amount: amount,
-              recurring: planType === 'monthly' ? { interval: 'month' } : { interval: 'year' },
             },
-            quantity: 1,
+            items: [
+              {
+                name: planName,
+                description: description,
+                sku: userType === 'parent' ? 'PARENT_ANNUAL' : 'DOULA_MONTHLY',
+                unit_amount: {
+                  currency_code: 'USD',
+                  value: price,
+                },
+                quantity: '1',
+                category: 'SUBSCRIPTION',
+              },
+            ],
+            custom_id: JSON.stringify({
+              userId,
+              userType,
+              planType,
+              email,
+            }),
           },
         ],
-        mode: planType === 'monthly' ? 'subscription' : 'subscription',
-        customer_email: email,
-        metadata: {
-          userId,
-          userType,
-          planType,
+        payer: {
+          email_address: email,
         },
-        success_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-cancelled`,
-      });
+        application_context: {
+          brand_name: 'Doula Connect',
+          user_action: 'PAY_NOW',
+          return_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?order_id={ORDER_ID}`,
+          cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-cancelled`,
+        },
+      };
+
+      const response = await paypalClient.execute(orderRequest);
+      const orderId = response.result.id;
+      const approvalUrl = response.result.links.find((link: any) => link.rel === 'approve')?.href;
+
+      if (!approvalUrl) {
+        throw new Error('No approval URL returned from PayPal');
+      }
 
       app.logger.info(
-        { sessionId: session.id, userId, checkoutUrl: session.url },
-        'Payment session created successfully'
+        { orderId, userId, approvalUrl: approvalUrl.substring(0, 50) },
+        'PayPal order created successfully'
       );
 
       await reply.status(200).send({
         success: true,
-        sessionId: session.id,
-        clientSecret: session.client_secret,
-        checkoutUrl: session.url,
+        orderId,
+        approvalUrl,
       });
     } catch (error) {
       app.logger.error(
         { err: error, userId, userType, planType, email },
-        'Failed to create payment session'
+        'Failed to create PayPal order'
       );
       await reply.status(500).send({
-        error: 'Failed to create payment session',
+        error: 'Failed to create payment order',
         details: error instanceof Error ? error.message : String(error)
       });
     }
   });
 
   /**
-   * Handle payment success webhook
+   * Handle PayPal webhook events
    */
   fastify.post('/payments/webhook', {
     schema: {
-      description: 'Handle Stripe webhook for payment success',
+      description: 'Handle PayPal webhook events',
       tags: ['payments'],
       body: {
         type: 'object',
@@ -187,45 +224,28 @@ export function register(app: App, fastify: FastifyInstance) {
       },
     },
   }, async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
-    const sig = request.headers['stripe-signature'] as string;
+    const webhookId = getWebhookVerificationToken();
 
-    app.logger.info({ sig: sig?.substring(0, 20) }, 'Webhook received from Stripe');
+    app.logger.info({ webhookId: webhookId?.substring(0, 20) }, 'Webhook received from PayPal');
 
     try {
-      const stripeClient = getStripeClient();
-      const webhookSecret = getWebhookSecret();
+      const event = request.body as any;
 
-      if (!webhookSecret) {
-        app.logger.warn('STRIPE_WEBHOOK_SECRET not configured - webhook signature verification skipped');
-        await reply.status(200).send({ received: true });
-        return;
-      }
+      // Log webhook event type
+      app.logger.info({ eventType: event.event_type, eventId: event.id }, 'Processing PayPal webhook event');
 
-      if (!sig) {
-        app.logger.error('Stripe webhook signature missing');
-        await reply.status(400).send({ error: 'Missing stripe-signature header' });
-        return;
-      }
+      // Handle CHECKOUT.ORDER.APPROVED event (payment captured successfully)
+      if (event.event_type === 'CHECKOUT.ORDER.APPROVED' || event.event_type === 'CHECKOUT.ORDER.COMPLETED') {
+        const orderId = event.resource.id;
+        const payer = event.resource.payer;
+        const purchaseUnit = event.resource.purchase_units[0];
+        const customData = JSON.parse(purchaseUnit.custom_id || '{}');
+        const { userId, userType, planType, email } = customData;
 
-      // Get raw body for webhook signature verification
-      const rawBody = typeof request.body === 'string' ? request.body : JSON.stringify(request.body);
-
-      app.logger.debug({ bodyLength: rawBody.length }, 'Constructing webhook event');
-
-      const event = stripeClient.webhooks.constructEvent(
-        rawBody,
-        sig,
-        webhookSecret
-      );
-
-      app.logger.info({ eventType: event.type, eventId: event.id }, 'Webhook event verified and constructed');
-
-      // Handle checkout session completion
-      if (event.type === 'checkout.session.completed') {
-        const session = event.data.object as any;
-        const { userId, userType, planType } = session.metadata;
-
-        app.logger.info({ userId, userType, planType, sessionId: session.id }, 'Processing checkout session completion');
+        app.logger.info(
+          { orderId, userId, userType, planType },
+          'Processing order approval'
+        );
 
         // Create or update subscription record
         const amount = userType === 'parent' ? PARENT_ANNUAL_PRICE : DOULA_MONTHLY_PRICE;
@@ -248,11 +268,11 @@ export function register(app: App, fastify: FastifyInstance) {
               await tx
                 .update(schema.subscriptions)
                 .set({
-                  stripeCustomerId: session.customer,
-                  stripeSubscriptionId: session.subscription,
+                  paypalCustomerId: payer.payer_id,
+                  paypalOrderId: orderId,
                   status: 'active',
                   planType,
-                  amount: (amount / 100).toString(),
+                  amount,
                   currentPeriodStart: now,
                   currentPeriodEnd: endDate,
                 })
@@ -264,11 +284,11 @@ export function register(app: App, fastify: FastifyInstance) {
                 .insert(schema.subscriptions)
                 .values({
                   userId,
-                  stripeCustomerId: session.customer as string,
-                  stripeSubscriptionId: session.subscription as string,
+                  paypalCustomerId: payer.payer_id as string,
+                  paypalOrderId: orderId as string,
                   status: 'active',
                   planType,
-                  amount: (amount / 100).toString(),
+                  amount,
                   currentPeriodStart: now,
                   currentPeriodEnd: endDate,
                 });
@@ -295,15 +315,15 @@ export function register(app: App, fastify: FastifyInstance) {
         }
       }
 
-      // Handle subscription cancellation
-      if (event.type === 'customer.subscription.deleted') {
-        const subscription = event.data.object as any;
-        app.logger.info({ stripeSubscriptionId: subscription.id }, 'Processing subscription cancellation');
+      // Handle BILLING.SUBSCRIPTION.CANCELLED event
+      if (event.event_type === 'BILLING.SUBSCRIPTION.CANCELLED') {
+        const subscriptionId = event.resource.id;
+        app.logger.info({ subscriptionId }, 'Processing subscription cancellation');
 
         const subs = await app.db
           .select()
           .from(schema.subscriptions)
-          .where(eq(schema.subscriptions.stripeSubscriptionId, subscription.id));
+          .where(eq(schema.subscriptions.paypalSubscriptionId, subscriptionId));
 
         if (subs.length > 0) {
           const sub = subs[0];
@@ -342,7 +362,7 @@ export function register(app: App, fastify: FastifyInstance) {
             throw txError;
           }
         } else {
-          app.logger.warn({ stripeSubscriptionId: subscription.id }, 'No subscription found for cancellation event');
+          app.logger.warn({ subscriptionId }, 'No subscription found for cancellation event');
         }
       }
 
@@ -350,7 +370,7 @@ export function register(app: App, fastify: FastifyInstance) {
     } catch (error) {
       app.logger.error(
         { err: error },
-        'Error processing webhook'
+        'Error processing PayPal webhook'
       );
       await reply.status(400).send({
         error: 'Webhook error',

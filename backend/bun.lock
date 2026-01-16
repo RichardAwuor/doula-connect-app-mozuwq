@@ -10,6 +10,7 @@
         "@fastify/multipart": "^9.3.0",
         "@fastify/swagger": "^9.5.2",
         "@neondatabase/serverless": "^1.0.2",
+        "@paypal/checkout-server-sdk": "^1.0.3",
         "@specific-dev/framework": "1.20.2",
         "better-auth": "1.4.5",
         "commander": "^12.1.0",
@@ -377,6 +378,10 @@
     "@opentelemetry/semantic-conventions": ["@opentelemetry/semantic-conventions@1.38.0", "", {}, "sha512-kocjix+/sSggfJhwXqClZ3i9Y/MI0fp7b+g7kCRm6psy2dsf8uApTRclwG18h8Avm7C9+fnt+O36PspJ/OzoWg=="],
 
     "@opentelemetry/sql-common": ["@opentelemetry/sql-common@0.41.2", "", { "dependencies": { "@opentelemetry/core": "^2.0.0" }, "peerDependencies": { "@opentelemetry/api": "^1.1.0" } }, "sha512-4mhWm3Z8z+i508zQJ7r6Xi7y4mmoJpdvH0fZPFRkWrdp5fq7hhZ2HhYokEOLkfqSMgPR4Z9EyB3DBkbKGOqZiQ=="],
+
+    "@paypal/checkout-server-sdk": ["@paypal/checkout-server-sdk@1.0.3", "", { "dependencies": { "@paypal/paypalhttp": "^1.0.1" } }, "sha512-UEdq8akEdMz0Vs4qoQFU2gMp8PpyE/HKyMwiZuK4vIWUKl8jfd1fWKjQN5cDFm9NkFUIp5U7h++rdMOVj9WMNA=="],
+
+    "@paypal/paypalhttp": ["@paypal/paypalhttp@1.0.1", "", {}, "sha512-DC7AHxTT7drF6dUi3YaFdPVuT15sIkpD5H2eHmdtFgxM4UanS1o1ZDfMhR9mpxd8o+X6pz2r+EZVRRq+n1cssQ=="],
 
     "@pinojs/redact": ["@pinojs/redact@0.4.0", "", {}, "sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg=="],
 
