@@ -33,15 +33,25 @@ export default function PaymentScreen() {
 
   const handlePayment = async () => {
     console.log('[Payment] Creating PayPal payment session...');
+    console.log('[Payment] User profile:', {
+      id: userProfile.id,
+      email: userProfile.email,
+      userType: userProfile.userType
+    });
+    
     setProcessing(true);
 
     try {
-      const response = await apiPost('/payments/create-session', {
+      const requestData = {
         userId: userProfile.id,
         userType: userProfile.userType,
         planType: isParent ? 'annual' : 'monthly',
         email: userProfile.email,
-      });
+      };
+      
+      console.log('[Payment] Sending payment request:', requestData);
+      
+      const response = await apiPost('/payments/create-session', requestData);
       
       console.log('[Payment] PayPal payment session created:', response);
 
@@ -115,11 +125,50 @@ export default function PaymentScreen() {
         throw new Error(response.error || 'Failed to create payment session');
       }
     } catch (error: any) {
-      console.error('[Payment] Error:', error);
+      console.error('[Payment] Payment error:', error);
+      console.error('[Payment] Error message:', error.message);
+      
+      let errorTitle = 'Payment Error';
+      let errorMessage = 'An error occurred while processing your payment. Please try again.';
+      
+      // Check for specific error messages
+      if (error.message) {
+        const msg = error.message.toLowerCase();
+        
+        // PayPal not configured
+        if (msg.includes('paypal') && (msg.includes('not available') || msg.includes('disabled') || msg.includes('environment variables'))) {
+          errorTitle = 'Payment System Unavailable';
+          errorMessage = 'The payment system is currently being configured. Please contact support or try again later.\n\nError: PayPal credentials not configured on the server.';
+        }
+        // Service unavailable
+        else if (msg.includes('503') || msg.includes('service unavailable')) {
+          errorTitle = 'Service Unavailable';
+          errorMessage = 'The payment service is temporarily unavailable. Please try again in a few minutes.';
+        }
+        // Network errors
+        else if (msg.includes('network') || msg.includes('fetch')) {
+          errorTitle = 'Connection Error';
+          errorMessage = 'Unable to connect to the payment server. Please check your internet connection and try again.';
+        }
+        // Backend not configured
+        else if (msg.includes('backend url not configured')) {
+          errorTitle = 'Configuration Error';
+          errorMessage = 'The app is not properly configured. Please contact support.';
+        }
+        // Generic server error
+        else if (msg.includes('server error')) {
+          errorTitle = 'Server Error';
+          errorMessage = 'A server error occurred. Please try again later or contact support.';
+        }
+        // Use the actual error message if none of the above match
+        else {
+          errorMessage = error.message;
+        }
+      }
       
       Alert.alert(
-        'Error',
-        error.message || 'Payment processing is currently unavailable. Please try again later.',
+        errorTitle,
+        errorMessage,
         [
           {
             text: 'OK',
