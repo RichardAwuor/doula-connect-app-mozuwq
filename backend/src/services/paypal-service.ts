@@ -10,6 +10,19 @@ let paypalInitialized = false;
 let paypalError: string | null = null;
 
 /**
+ * Mask sensitive credentials for logging - shows first 4 and last 4 characters
+ * Example: "APP-1234567890abcdef" becomes "APP-****...cdef"
+ */
+function maskCredential(credential: string): string {
+  if (credential.length <= 8) {
+    return '****';
+  }
+  const first4 = credential.substring(0, 4);
+  const last4 = credential.substring(credential.length - 4);
+  return `${first4}****...${last4}`;
+}
+
+/**
  * Initialize and validate PayPal configuration
  * Should be called during server startup
  */
@@ -33,7 +46,8 @@ export function initializePayPal(logger?: any): { success: boolean; error?: stri
 
   try {
     // Determine environment based on NODE_ENV
-    const environment = process.env.NODE_ENV === 'production'
+    const mode = process.env.NODE_ENV === 'production' ? 'production' : 'sandbox';
+    const environment = mode === 'production'
       ? new checkoutNodeJssdk.core.LiveEnvironment(clientId, clientSecret)
       : new checkoutNodeJssdk.core.SandboxEnvironment(clientId, clientSecret);
 
@@ -42,8 +56,16 @@ export function initializePayPal(logger?: any): { success: boolean; error?: stri
     paypalInitialized = true;
 
     if (logger) {
-      const mode = process.env.NODE_ENV === 'production' ? 'Live' : 'Sandbox';
-      logger.info(`PayPal client successfully initialized in ${mode} mode`);
+      const maskedClientId = maskCredential(clientId);
+      const maskedClientSecret = maskCredential(clientSecret);
+      logger.info(
+        {
+          environment: mode,
+          clientId: maskedClientId,
+          clientSecret: maskedClientSecret,
+        },
+        `PayPal client successfully initialized in ${mode} mode`
+      );
     }
 
     return { success: true };
@@ -51,7 +73,7 @@ export function initializePayPal(logger?: any): { success: boolean; error?: stri
     paypalError = `Failed to initialize PayPal: ${error instanceof Error ? error.message : String(error)}`;
     paypalInitialized = true;
     if (logger) {
-      logger.error({ err: error }, 'PayPal initialization failed');
+      logger.error({ err: error }, 'PayPal initialization failed - unable to create client with provided credentials');
     }
     return { success: false, error: paypalError };
   }
