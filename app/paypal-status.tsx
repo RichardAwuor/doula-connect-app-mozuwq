@@ -1,5 +1,10 @@
 
+import { apiGet } from '@/utils/api';
+import { colors, commonStyles } from '@/styles/commonStyles';
 import React, { useState, useEffect } from 'react';
+import { IconSymbol } from '@/components/IconSymbol';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import {
   View,
   Text,
@@ -9,11 +14,6 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { IconSymbol } from '@/components/IconSymbol';
-import { colors, commonStyles } from '@/styles/commonStyles';
-import { useRouter } from 'expo-router';
-import { apiGet } from '@/utils/api';
 
 interface PayPalStatus {
   initialized: boolean;
@@ -39,26 +39,23 @@ export default function PayPalStatusScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [paypalStatus, setPaypalStatus] = useState<PayPalStatus | null>(null);
-  const [appStatus, setAppStatus] = useState<AppStatus | null>(null);
+  const [status, setStatus] = useState<AppStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    console.log('PayPal Status: Screen mounted, fetching status...');
+    fetchStatus();
+  }, []);
+
   const fetchStatus = async () => {
-    console.log('Fetching PayPal status...');
+    console.log('PayPal Status: Fetching backend status...');
     try {
       setError(null);
-      
-      // Fetch PayPal-specific status
-      const paypalResponse = await apiGet('/status/paypal');
-      console.log('PayPal status response:', paypalResponse);
-      setPaypalStatus(paypalResponse);
-
-      // Fetch overall app status
-      const statusResponse = await apiGet('/status');
-      console.log('App status response:', statusResponse);
-      setAppStatus(statusResponse);
+      const response = await apiGet('/status');
+      console.log('PayPal Status: Status response received:', JSON.stringify(response, null, 2));
+      setStatus(response);
     } catch (err) {
-      console.error('Error fetching status:', err);
+      console.error('PayPal Status: Error fetching status:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch status');
     } finally {
       setLoading(false);
@@ -66,11 +63,8 @@ export default function PayPalStatusScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchStatus();
-  }, []);
-
   const onRefresh = () => {
+    console.log('PayPal Status: User triggered refresh');
     setRefreshing(true);
     fetchStatus();
   };
@@ -87,7 +81,13 @@ export default function PayPalStatusScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => {
+              console.log('PayPal Status: User tapped back button');
+              router.back();
+            }}
+            style={styles.backButton}
+          >
             <IconSymbol
               ios_icon_name="chevron.left"
               android_material_icon_name="arrow-back"
@@ -96,11 +96,10 @@ export default function PayPalStatusScreen() {
             />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>PayPal Status</Text>
-          <View style={{ width: 40 }} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Checking PayPal configuration...</Text>
+          <Text style={styles.loadingText}>Loading status...</Text>
         </View>
       </SafeAreaView>
     );
@@ -109,7 +108,13 @@ export default function PayPalStatusScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => {
+            console.log('PayPal Status: User tapped back button');
+            router.back();
+          }}
+          style={styles.backButton}
+        >
           <IconSymbol
             ios_icon_name="chevron.left"
             android_material_icon_name="arrow-back"
@@ -118,14 +123,6 @@ export default function PayPalStatusScreen() {
           />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>PayPal Status</Text>
-        <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
-          <IconSymbol
-            ios_icon_name="arrow.clockwise"
-            android_material_icon_name="refresh"
-            size={24}
-            color={colors.text}
-          />
-        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -134,171 +131,132 @@ export default function PayPalStatusScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {error && (
-          <View style={styles.errorCard}>
+        {error ? (
+          <View style={styles.errorContainer}>
             <IconSymbol
               ios_icon_name="exclamationmark.triangle"
               android_material_icon_name="warning"
-              size={32}
+              size={48}
               color="#F44336"
             />
+            <Text style={styles.errorTitle}>Connection Error</Text>
             <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => {
+                console.log('PayPal Status: User tapped retry button');
+                setLoading(true);
+                fetchStatus();
+              }}
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
           </View>
-        )}
+        ) : status ? (
+          <>
+            <View style={styles.statusCard}>
+              <View style={styles.statusHeader}>
+                <IconSymbol
+                  ios_icon_name={status.services.paypal.available ? 'checkmark.circle.fill' : 'xmark.circle.fill'}
+                  android_material_icon_name={getStatusIcon(status.services.paypal.available)}
+                  size={64}
+                  color={getStatusColor(status.services.paypal.available)}
+                />
+                <Text style={styles.statusTitle}>
+                  {status.services.paypal.available ? 'PayPal Connected' : 'PayPal Not Available'}
+                </Text>
+              </View>
 
-        {paypalStatus && (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
+              <View style={styles.statusDetails}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Initialized:</Text>
+                  <Text
+                    style={[
+                      styles.detailValue,
+                      { color: getStatusColor(status.services.paypal.initialized) },
+                    ]}
+                  >
+                    {status.services.paypal.initialized ? 'Yes' : 'No'}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Available:</Text>
+                  <Text
+                    style={[
+                      styles.detailValue,
+                      { color: getStatusColor(status.services.paypal.available) },
+                    ]}
+                  >
+                    {status.services.paypal.available ? 'Yes' : 'No'}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Backend Status:</Text>
+                  <Text
+                    style={[
+                      styles.detailValue,
+                      { color: status.status === 'healthy' ? '#4CAF50' : '#FF9800' },
+                    ]}
+                  >
+                    {status.status}
+                  </Text>
+                </View>
+              </View>
+
+              {status.services.paypal.error && (
+                <View style={styles.errorBox}>
+                  <IconSymbol
+                    ios_icon_name="exclamationmark.triangle.fill"
+                    android_material_icon_name="error"
+                    size={24}
+                    color="#F44336"
+                  />
+                  <Text style={styles.errorBoxText}>{status.services.paypal.error}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Diagnostics Button */}
+            <TouchableOpacity
+              style={styles.diagnosticsButton}
+              onPress={() => {
+                console.log('PayPal Status: User tapped diagnostics button');
+                router.push('/paypal-diagnostics');
+              }}
+            >
               <IconSymbol
-                ios_icon_name="creditcard"
-                android_material_icon_name="payment"
-                size={32}
-                color={colors.primary}
+                ios_icon_name="wrench.and.screwdriver.fill"
+                android_material_icon_name="build"
+                size={24}
+                color="#FFFFFF"
               />
-              <Text style={styles.cardTitle}>PayPal Service</Text>
-            </View>
+              <Text style={styles.diagnosticsButtonText}>View Detailed Diagnostics</Text>
+            </TouchableOpacity>
 
-            <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>Initialized:</Text>
-              <View style={styles.statusValue}>
-                <IconSymbol
-                  ios_icon_name={paypalStatus.initialized ? 'checkmark.circle' : 'xmark.circle'}
-                  android_material_icon_name={getStatusIcon(paypalStatus.initialized)}
-                  size={20}
-                  color={getStatusColor(paypalStatus.initialized)}
-                />
-                <Text
-                  style={[
-                    styles.statusText,
-                    { color: getStatusColor(paypalStatus.initialized) },
-                  ]}
-                >
-                  {paypalStatus.initialized ? 'Yes' : 'No'}
+            {!status.services.paypal.available && (
+              <View style={styles.helpCard}>
+                <Text style={styles.helpTitle}>Configuration Required</Text>
+                <Text style={styles.helpText}>
+                  PayPal payment processing is not available. Please ensure the following environment
+                  variables are set in your backend:
                 </Text>
-              </View>
-            </View>
-
-            <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>Available:</Text>
-              <View style={styles.statusValue}>
-                <IconSymbol
-                  ios_icon_name={paypalStatus.available ? 'checkmark.circle' : 'xmark.circle'}
-                  android_material_icon_name={getStatusIcon(paypalStatus.available)}
-                  size={20}
-                  color={getStatusColor(paypalStatus.available)}
-                />
-                <Text
-                  style={[
-                    styles.statusText,
-                    { color: getStatusColor(paypalStatus.available) },
-                  ]}
-                >
-                  {paypalStatus.available ? 'Yes' : 'No'}
+                <View style={styles.codeBlock}>
+                  <Text style={styles.codeText}>PAYPAL_CLIENT_ID=your_client_id</Text>
+                  <Text style={styles.codeText}>PAYPAL_CLIENT_SECRET=your_secret</Text>
+                </View>
+                <Text style={styles.helpText}>
+                  After setting these variables, restart the backend server.
                 </Text>
-              </View>
-            </View>
-
-            {paypalStatus.error && (
-              <View style={styles.errorSection}>
-                <Text style={styles.errorSectionTitle}>Error Details:</Text>
-                <Text style={styles.errorSectionText}>{paypalStatus.error}</Text>
               </View>
             )}
 
-            {paypalStatus.message && (
-              <View style={styles.messageSection}>
-                <Text style={styles.messageSectionText}>{paypalStatus.message}</Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        {appStatus && (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <IconSymbol
-                ios_icon_name="server.rack"
-                android_material_icon_name="dns"
-                size={32}
-                color={colors.primary}
-              />
-              <Text style={styles.cardTitle}>Overall System Status</Text>
-            </View>
-
-            <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>Status:</Text>
-              <Text
-                style={[
-                  styles.statusText,
-                  {
-                    color:
-                      appStatus.status === 'healthy'
-                        ? '#4CAF50'
-                        : appStatus.status === 'degraded'
-                        ? '#FF9800'
-                        : '#F44336',
-                  },
-                ]}
-              >
-                {appStatus.status.toUpperCase()}
+            <View style={styles.timestampContainer}>
+              <Text style={styles.timestamp}>
+                Last updated: {new Date(status.timestamp).toLocaleString()}
               </Text>
             </View>
-
-            <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>Database:</Text>
-              <Text
-                style={[
-                  styles.statusText,
-                  {
-                    color:
-                      appStatus.services.database === 'ready' ? '#4CAF50' : '#F44336',
-                  },
-                ]}
-              >
-                {appStatus.services.database.toUpperCase()}
-              </Text>
-            </View>
-
-            <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>Timestamp:</Text>
-              <Text style={styles.statusText}>
-                {new Date(appStatus.timestamp).toLocaleString()}
-              </Text>
-            </View>
-          </View>
-        )}
-
-        <View style={styles.infoCard}>
-          <IconSymbol
-            ios_icon_name="info.circle"
-            android_material_icon_name="info"
-            size={24}
-            color={colors.primary}
-          />
-          <Text style={styles.infoText}>
-            This screen shows the current status of the PayPal payment service. If PayPal
-            is not available, please ensure that PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET
-            environment variables are properly configured in the backend.
-          </Text>
-        </View>
-
-        {paypalStatus && !paypalStatus.available && (
-          <View style={styles.troubleshootCard}>
-            <Text style={styles.troubleshootTitle}>Troubleshooting Steps:</Text>
-            <Text style={styles.troubleshootStep}>
-              1. Verify that PAYPAL_CLIENT_ID is set in backend environment
-            </Text>
-            <Text style={styles.troubleshootStep}>
-              2. Verify that PAYPAL_CLIENT_SECRET is set in backend environment
-            </Text>
-            <Text style={styles.troubleshootStep}>
-              3. Restart the backend server after setting environment variables
-            </Text>
-            <Text style={styles.troubleshootStep}>
-              4. Check backend logs for detailed error messages
-            </Text>
-          </View>
-        )}
+          </>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -312,7 +270,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
@@ -320,49 +277,78 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 8,
-  },
-  refreshButton: {
-    padding: 8,
+    marginRight: 8,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: colors.text,
   },
+  content: {
+    flex: 1,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
     color: colors.textSecondary,
   },
-  content: {
+  errorContainer: {
     flex: 1,
-    padding: 16,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
-    ...commonStyles.shadow,
-  },
-  cardHeader: {
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    padding: 24,
   },
-  cardTitle: {
-    fontSize: 18,
+  errorTitle: {
+    fontSize: 20,
     fontWeight: '600',
     color: colors.text,
-    marginLeft: 12,
+    marginTop: 16,
+    marginBottom: 8,
   },
-  statusRow: {
+  errorText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  statusCard: {
+    margin: 16,
+    padding: 24,
+    backgroundColor: colors.cardBackground,
+    borderRadius: 16,
+    ...commonStyles.shadow,
+  },
+  statusHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  statusTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  statusDetails: {
+    marginTop: 16,
+  },
+  detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -370,92 +356,83 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  statusLabel: {
+  detailLabel: {
     fontSize: 16,
-    color: colors.textSecondary,
-    fontWeight: '500',
+    color: colors.text,
   },
-  statusValue: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  statusText: {
+  detailValue: {
     fontSize: 16,
     fontWeight: '600',
   },
-  errorSection: {
+  errorBox: {
     marginTop: 16,
-    padding: 12,
-    backgroundColor: '#FFEBEE',
-    borderRadius: 8,
-  },
-  errorSectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#C62828',
-    marginBottom: 8,
-  },
-  errorSectionText: {
-    fontSize: 14,
-    color: '#C62828',
-    lineHeight: 20,
-  },
-  messageSection: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: '#E3F2FD',
-    borderRadius: 8,
-  },
-  messageSectionText: {
-    fontSize: 14,
-    color: '#1565C0',
-    lineHeight: 20,
-  },
-  errorCard: {
-    backgroundColor: '#FFEBEE',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  errorText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#C62828',
-    textAlign: 'center',
-  },
-  infoCard: {
-    backgroundColor: '#E3F2FD',
-    borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    backgroundColor: '#FFEBEE',
+    borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
-  infoText: {
+  errorBoxText: {
     flex: 1,
     marginLeft: 12,
     fontSize: 14,
-    color: '#1565C0',
+    color: '#D32F2F',
     lineHeight: 20,
   },
-  troubleshootCard: {
+  diagnosticsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: '#2196F3',
+    borderRadius: 12,
+    ...commonStyles.shadow,
+  },
+  diagnosticsButtonText: {
+    marginLeft: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  helpCard: {
+    margin: 16,
+    padding: 20,
     backgroundColor: '#FFF3E0',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
   },
-  troubleshootTitle: {
-    fontSize: 16,
+  helpTitle: {
+    fontSize: 18,
     fontWeight: '600',
     color: '#E65100',
     marginBottom: 12,
   },
-  troubleshootStep: {
+  helpText: {
     fontSize: 14,
     color: '#E65100',
-    lineHeight: 24,
-    marginLeft: 8,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  codeBlock: {
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 12,
+  },
+  codeText: {
+    fontFamily: 'monospace',
+    fontSize: 12,
+    color: '#333333',
+    marginBottom: 4,
+  },
+  timestampContainer: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  timestamp: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
   },
 });
