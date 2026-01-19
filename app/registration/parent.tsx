@@ -83,6 +83,8 @@ export default function ParentRegistrationScreen() {
       terms: { en: 'I accept the terms and conditions of platform use', es: 'Acepto los términos y condiciones de uso de la plataforma' },
       continue: { en: 'Continue to Payment', es: 'Continuar al Pago' },
       back: { en: 'Back', es: 'Atrás' },
+      missingFieldsTitle: { en: 'Missing Required Fields', es: 'Campos Requeridos Faltantes' },
+      missingFieldsMessage: { en: 'Please fill in the following required fields:', es: 'Por favor complete los siguientes campos requeridos:' },
     };
     return translations[key]?.[language] || key;
   };
@@ -137,23 +139,28 @@ export default function ParentRegistrationScreen() {
   const handleSubmit = async () => {
     console.log('[Registration] Submitting parent registration');
     
-    if (!firstName || !lastName || !state || !town || !zipCode) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
-    }
+    // Collect all missing required fields
+    const missingFields: string[] = [];
+    
+    if (!firstName) missingFields.push(t('firstName'));
+    if (!lastName) missingFields.push(t('lastName'));
+    if (!state) missingFields.push(t('state'));
+    if (!town) missingFields.push(t('town'));
+    if (!zipCode) missingFields.push(t('zipCode'));
+    if (serviceCategories.length === 0) missingFields.push(t('serviceCategory'));
+    if (financingTypes.length === 0) missingFields.push(t('financingType'));
+    if (!desiredStartTime) missingFields.push(t('startTime'));
+    if (!desiredEndTime) missingFields.push(t('endTime'));
+    if (!acceptedTerms) missingFields.push(t('terms'));
 
-    if (serviceCategories.length === 0) {
-      Alert.alert('Error', 'Please select at least one service category');
-      return;
-    }
-
-    if (financingTypes.length === 0) {
-      Alert.alert('Error', 'Please select at least one financing type');
-      return;
-    }
-
-    if (!acceptedTerms) {
-      Alert.alert('Error', 'Please accept the terms and conditions');
+    // If there are missing fields, show a detailed error message
+    if (missingFields.length > 0) {
+      const fieldsList = missingFields.map((field, index) => `${index + 1}. ${field}`).join('\n');
+      Alert.alert(
+        t('missingFieldsTitle'),
+        `${t('missingFieldsMessage')}\n\n${fieldsList}`
+      );
+      console.log('[Registration] Missing required fields:', missingFields);
       return;
     }
 
@@ -417,7 +424,7 @@ export default function ParentRegistrationScreen() {
           ))}
 
           <Text style={[commonStyles.label, { marginTop: 16 }]}>{t('desiredHours')}</Text>
-          <Text style={commonStyles.label}>{t('startTime')}</Text>
+          <Text style={commonStyles.label}>{t('startTime')} *</Text>
           <TouchableOpacity
             style={commonStyles.input}
             onPress={() => setShowStartTimePicker(true)}
@@ -441,7 +448,7 @@ export default function ParentRegistrationScreen() {
             />
           )}
 
-          <Text style={commonStyles.label}>{t('endTime')}</Text>
+          <Text style={commonStyles.label}>{t('endTime')} *</Text>
           <TouchableOpacity
             style={commonStyles.input}
             onPress={() => setShowEndTimePicker(true)}
