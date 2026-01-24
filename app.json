@@ -1,4 +1,3 @@
-
 {
   "expo": {
     "name": "Doula Connect",
@@ -44,7 +43,7 @@
     },
     "extra": {
       "router": {},
-      "backendUrl": "https://vslknajpjyqumubtvv7mdizbxi0prltv.lambda-url.eu-central-1.on.aws/"
+      "backendUrl": "https://58wab47v29usdn5dvkdh2bb8tmk9hce6.app.specular.dev"
     }
   }
 }
