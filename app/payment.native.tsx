@@ -19,11 +19,16 @@ import { apiPost } from '@/utils/api';
 import * as WebBrowser from 'expo-web-browser';
 
 export default function PaymentScreen() {
+  console.log('[Payment Native] Screen mounted');
   const router = useRouter();
   const { userProfile, setUserProfile } = useUser();
   const [processing, setProcessing] = useState(false);
 
+  console.log('[Payment Native] User profile:', userProfile ? 'exists' : 'null');
+
   if (!userProfile) {
+    console.log('[Payment Native] No user profile, redirecting to welcome');
+    router.replace('/welcome');
     return null;
   }
 

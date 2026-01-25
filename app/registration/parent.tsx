@@ -165,7 +165,38 @@ export default function ParentRegistrationScreen() {
     }
 
     try {
-      const { apiPost } = await import('@/utils/api');
+      const { apiPost, apiGet, isBackendConfigured, BACKEND_URL } = await import('@/utils/api');
+      
+      // Check if backend is configured
+      if (!isBackendConfigured()) {
+        console.error('[Registration] Backend URL not configured');
+        Alert.alert(
+          'Configuration Error',
+          'The app backend is not configured. Please contact support.\n\nBackend URL: ' + (BACKEND_URL || 'NOT SET')
+        );
+        return;
+      }
+      
+      console.log('[Registration] Backend URL:', BACKEND_URL);
+      
+      // Test backend connectivity first
+      try {
+        console.log('[Registration] Testing backend connectivity...');
+        await apiGet('/health');
+        console.log('[Registration] Backend is reachable');
+      } catch (healthError: any) {
+        console.error('[Registration] Backend health check failed:', healthError);
+        Alert.alert(
+          'Backend Unavailable',
+          'Cannot connect to the backend server. Please ensure:\n\n' +
+          '1. The backend is running\n' +
+          '2. Your internet connection is working\n' +
+          '3. The backend URL is correct\n\n' +
+          'Backend URL: ' + BACKEND_URL + '\n\n' +
+          'Error: ' + healthError.message
+        );
+        return;
+      }
       
       const registrationData = {
         email: userEmail || '',
@@ -185,11 +216,12 @@ export default function ParentRegistrationScreen() {
         acceptedTerms,
       };
       
-      console.log('[Registration] Sending parent registration data:', registrationData);
+      console.log('[Registration] Sending parent registration data to:', BACKEND_URL + '/auth/register-parent');
+      console.log('[Registration] Registration data:', JSON.stringify(registrationData, null, 2));
       
       // Call backend API to register parent
       const response = await apiPost('/auth/register-parent', registrationData);
-      console.log('[Registration] Parent registered:', response);
+      console.log('[Registration] Parent registered successfully:', response);
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to register parent');
@@ -225,10 +257,26 @@ export default function ParentRegistrationScreen() {
       await AsyncStorage.setItem('doula_connect_user_type', 'parent');
       console.log('[Registration] User session saved to storage');
       
+      console.log('[Registration] Navigating to payment screen...');
       router.push('/payment');
+      console.log('[Registration] Navigation command sent');
     } catch (error: any) {
       console.error('[Registration] Error creating parent profile:', error);
-      Alert.alert('Error', error.message || 'Failed to create profile. Please try again.');
+      console.error('[Registration] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      
+      let errorMessage = error.message || 'Failed to create profile. Please try again.';
+      
+      // Check if it's a navigation error
+      if (error.message && error.message.toLowerCase().includes('not found')) {
+        errorMessage = 'Navigation error: Payment screen not found. Please contact support.';
+        console.error('[Registration] NAVIGATION ERROR - Payment route not found');
+      }
+      
+      Alert.alert('Error', errorMessage);
     }
   };
 

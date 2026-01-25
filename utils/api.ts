@@ -92,11 +92,18 @@ export const apiCall = async <T = any>(
   options?: RequestInit
 ): Promise<T> => {
   if (!isBackendConfigured()) {
-    throw new Error("Backend URL not configured. Please rebuild the app.");
+    const error = new Error("Backend URL not configured. Please rebuild the app.");
+    console.error("[API] Configuration error:", error.message);
+    throw error;
   }
 
   const url = `${BACKEND_URL}${endpoint}`;
   console.log("[API] Calling:", url, options?.method || "GET");
+  console.log("[API] Request options:", {
+    method: options?.method || "GET",
+    hasBody: !!options?.body,
+    headers: options?.headers,
+  });
 
   try {
     const response = await fetch(url, {
@@ -109,7 +116,8 @@ export const apiCall = async <T = any>(
 
     const text = await response.text();
     console.log("[API] Response status:", response.status);
-    console.log("[API] Response text:", text);
+    console.log("[API] Response headers:", JSON.stringify(Object.fromEntries(response.headers.entries())));
+    console.log("[API] Response text:", text.substring(0, 500)); // Log first 500 chars
 
     if (!response.ok) {
       // Try to parse as JSON first
@@ -124,7 +132,18 @@ export const apiCall = async <T = any>(
         }
       }
       
-      console.error("[API] Error response:", response.status, errorMessage);
+      console.error("[API] Error response:", {
+        status: response.status,
+        statusText: response.statusText,
+        url: url,
+        message: errorMessage,
+      });
+      
+      // Add more context to 404 errors
+      if (response.status === 404) {
+        errorMessage = `Endpoint not found: ${endpoint}\n\nThe server returned a 404 error. This usually means:\n- The backend API endpoint doesn't exist\n- The backend URL is incorrect\n- The backend is not running\n\nBackend URL: ${BACKEND_URL}`;
+      }
+      
       throw new Error(errorMessage);
     }
 
@@ -137,8 +156,19 @@ export const apiCall = async <T = any>(
       console.error("[API] Failed to parse response as JSON:", text);
       throw new Error("Invalid response from server");
     }
-  } catch (error) {
-    console.error("[API] Request failed:", error);
+  } catch (error: any) {
+    console.error("[API] Request failed:", {
+      message: error.message,
+      name: error.name,
+      url: url,
+      endpoint: endpoint,
+    });
+    
+    // Add more context to network errors
+    if (error.message && error.message.includes('Network request failed')) {
+      error.message = `Network error: Unable to connect to backend server.\n\nBackend URL: ${BACKEND_URL}\n\nPlease check:\n- Your internet connection\n- The backend server is running\n- The backend URL is correct`;
+    }
+    
     throw error;
   }
 };

@@ -82,7 +82,13 @@ export default function RootLayout() {
               <Stack.Screen name="auth/email" />
               <Stack.Screen name="registration/parent" />
               <Stack.Screen name="registration/doula" />
-              <Stack.Screen name="payment" />
+              <Stack.Screen 
+                name="payment" 
+                options={{
+                  presentation: 'card',
+                  gestureEnabled: false,
+                }}
+              />
               <Stack.Screen name="(tabs)" />
             </Stack>
           </UserProvider>
