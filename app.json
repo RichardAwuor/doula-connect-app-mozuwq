@@ -1,10 +1,11 @@
+
 {
   "expo": {
     "name": "Doula Connect",
     "slug": "Doula Connect",
     "version": "1.0.9",
     "orientation": "portrait",
-    "icon": "./assets/images/2c7e0498-b523-4877-88ba-eae9afdb3794.png",
+    "icon": "./assets/images/513e13a3-c9f9-4145-b2f8-d31f632a5ece.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "scheme": "doulaconnect",
@@ -18,16 +19,18 @@
       "bundleIdentifier": "com.doulaconnect.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "icon": "./assets/images/513e13a3-c9f9-4145-b2f8-d31f632a5ece.png"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/2c7e0498-b523-4877-88ba-eae9afdb3794.png",
+        "foregroundImage": "./assets/images/513e13a3-c9f9-4145-b2f8-d31f632a5ece.png",
         "backgroundColor": "#FFF5F0"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.simphoni.doula",
-      "versionCode": 10
+      "versionCode": 10,
+      "icon": "./assets/images/513e13a3-c9f9-4145-b2f8-d31f632a5ece.png"
     },
     "web": {
       "favicon": "./assets/images/2c7e0498-b523-4877-88ba-eae9afdb3794.png",
