@@ -3,10 +3,10 @@ import * as React from "react";
 import { createContext, useCallback, useContext } from "react";
 import { Platform } from "react-native";
 
-// Only import ExtensionStorage on iOS
 let ExtensionStorage: any = null;
 if (Platform.OS === 'ios') {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const appleTargets = require("@bacons/apple-targets");
     ExtensionStorage = appleTargets.ExtensionStorage;
   } catch (error) {
@@ -21,12 +21,9 @@ type WidgetContextType = {
 const WidgetContext = createContext<WidgetContextType | null>(null);
 
 export function WidgetProvider({ children }: { children: React.ReactNode }) {
-  // Update widget state whenever what we want to show changes
   React.useEffect(() => {
-    // Only run on iOS where widgets are supported
     if (Platform.OS === 'ios' && ExtensionStorage) {
       try {
-        // Refresh widget
         ExtensionStorage.reloadWidget();
       } catch (error) {
         console.log('Error reloading widget:', error);

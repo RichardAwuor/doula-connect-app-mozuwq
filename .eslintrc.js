@@ -1,3 +1,4 @@
+
 // https://docs.expo.dev/guides/using-eslint/
 module.exports = {
   extends: [
@@ -46,6 +47,12 @@ module.exports = {
       files: ['metro.config.js'],
       rules: {
         '@typescript-eslint/no-var-requires': 'off'
+      }
+    },
+    {
+      files: ['*.web.tsx', '*.web.ts'],
+      rules: {
+        'import/no-unresolved': 'off'
       }
     }
   ]

@@ -124,7 +124,6 @@ export default function ParentRegistrationScreen() {
   const handleStateChange = (newState: string) => {
     console.log('State changed:', newState);
     setState(newState);
-    // Reset town and zip code when state changes
     setTown('');
     setZipCode('');
   };
@@ -132,14 +131,12 @@ export default function ParentRegistrationScreen() {
   const handleTownChange = (newTown: string) => {
     console.log('Town changed:', newTown);
     setTown(newTown);
-    // Reset zip code when town changes
     setZipCode('');
   };
 
   const handleSubmit = async () => {
     console.log('[Registration] Submitting parent registration');
     
-    // Collect all missing required fields
     const missingFields: string[] = [];
     
     if (!firstName) missingFields.push(t('firstName'));
@@ -153,7 +150,6 @@ export default function ParentRegistrationScreen() {
     if (!desiredEndTime) missingFields.push(t('endTime'));
     if (!acceptedTerms) missingFields.push(t('terms'));
 
-    // If there are missing fields, show a detailed error message
     if (missingFields.length > 0) {
       const fieldsList = missingFields.map((field, index) => `${index + 1}. ${field}`).join('\n');
       Alert.alert(
@@ -165,9 +161,8 @@ export default function ParentRegistrationScreen() {
     }
 
     try {
-      const { apiPost, apiGet, isBackendConfigured, BACKEND_URL } = await import('@/utils/api');
+      const { apiPost, isBackendConfigured, BACKEND_URL } = await import('@/utils/api');
       
-      // Check if backend is configured
       if (!isBackendConfigured()) {
         console.error('[Registration] Backend URL not configured');
         Alert.alert(
@@ -178,25 +173,6 @@ export default function ParentRegistrationScreen() {
       }
       
       console.log('[Registration] Backend URL:', BACKEND_URL);
-      
-      // Test backend connectivity first
-      try {
-        console.log('[Registration] Testing backend connectivity...');
-        await apiGet('/health');
-        console.log('[Registration] Backend is reachable');
-      } catch (healthError: any) {
-        console.error('[Registration] Backend health check failed:', healthError);
-        Alert.alert(
-          'Backend Unavailable',
-          'Cannot connect to the backend server. Please ensure:\n\n' +
-          '1. The backend is running\n' +
-          '2. Your internet connection is working\n' +
-          '3. The backend URL is correct\n\n' +
-          'Backend URL: ' + BACKEND_URL + '\n\n' +
-          'Error: ' + healthError.message
-        );
-        return;
-      }
       
       const registrationData = {
         email: userEmail || '',
@@ -216,10 +192,9 @@ export default function ParentRegistrationScreen() {
         acceptedTerms,
       };
       
-      console.log('[Registration] Sending parent registration data to:', BACKEND_URL + '/auth/register-parent');
+      console.log('[Registration] Sending parent registration data');
       console.log('[Registration] Registration data:', JSON.stringify(registrationData, null, 2));
       
-      // Call backend API to register parent
       const response = await apiPost('/auth/register-parent', registrationData);
       console.log('[Registration] Parent registered successfully:', response);
       
@@ -227,7 +202,6 @@ export default function ParentRegistrationScreen() {
         throw new Error(response.error || 'Failed to register parent');
       }
       
-      // Create profile object with response data
       const profile: ParentProfile = {
         id: response.userId,
         userType: 'parent',
@@ -251,7 +225,6 @@ export default function ParentRegistrationScreen() {
       
       setUserProfile(profile);
       
-      // Save user ID and type to storage for session restoration
       const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
       await AsyncStorage.setItem('doula_connect_user_id', response.userId);
       await AsyncStorage.setItem('doula_connect_user_type', 'parent');
@@ -268,15 +241,19 @@ export default function ParentRegistrationScreen() {
         name: error.name
       });
       
-      let errorMessage = error.message || 'Failed to create profile. Please try again.';
+      let errorMessage = 'Failed to create profile. Please try again.';
       
-      // Check if it's a navigation error
-      if (error.message && error.message.toLowerCase().includes('not found')) {
-        errorMessage = 'Navigation error: Payment screen not found. Please contact support.';
-        console.error('[Registration] NAVIGATION ERROR - Payment route not found');
+      if (error.message) {
+        if (error.message.includes('Network request failed') || error.message.includes('Network error')) {
+          errorMessage = 'Cannot connect to the server. Please check your internet connection and try again.';
+        } else if (error.message.includes('404') || error.message.includes('not found')) {
+          errorMessage = 'Server configuration error. Please contact support.';
+        } else {
+          errorMessage = error.message;
+        }
       }
       
-      Alert.alert('Error', errorMessage);
+      Alert.alert('Registration Error', errorMessage);
     }
   };
 

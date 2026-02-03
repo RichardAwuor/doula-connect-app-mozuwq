@@ -138,7 +138,6 @@ export default function DoulaRegistrationScreen() {
   const handleStateChange = (newState: string) => {
     console.log('State changed:', newState);
     setState(newState);
-    // Reset town and zip code when state changes
     setTown('');
     setZipCode('');
   };
@@ -146,7 +145,6 @@ export default function DoulaRegistrationScreen() {
   const handleTownChange = (newTown: string) => {
     console.log('Town changed:', newTown);
     setTown(newTown);
-    // Reset zip code when town changes
     setZipCode('');
   };
 
@@ -246,7 +244,6 @@ export default function DoulaRegistrationScreen() {
     try {
       const { apiPost, isBackendConfigured, BACKEND_URL } = await import('@/utils/api');
       
-      // Check if backend is configured
       if (!isBackendConfigured()) {
         console.error('[Registration] Backend URL not configured');
         Alert.alert(
@@ -258,8 +255,6 @@ export default function DoulaRegistrationScreen() {
       
       console.log('[Registration] Backend URL:', BACKEND_URL);
       
-      // Note: File uploads are not implemented in the backend yet
-      // Using local URIs for now
       const profilePictureUrl = profilePicture.uri;
       const certificationUrls = certificationDocuments.map(doc => doc.uri);
       
@@ -283,30 +278,9 @@ export default function DoulaRegistrationScreen() {
         acceptedTerms,
       };
       
-      console.log('[Registration] Sending doula registration data to:', BACKEND_URL + '/auth/register-doula');
+      console.log('[Registration] Sending doula registration data');
       console.log('[Registration] Registration data:', JSON.stringify(registrationData, null, 2));
       
-      // Test backend connectivity first
-      try {
-        const { apiGet } = await import('@/utils/api');
-        console.log('[Registration] Testing backend connectivity...');
-        await apiGet('/health');
-        console.log('[Registration] Backend is reachable');
-      } catch (healthError: any) {
-        console.error('[Registration] Backend health check failed:', healthError);
-        Alert.alert(
-          'Backend Unavailable',
-          'Cannot connect to the backend server. Please ensure:\n\n' +
-          '1. The backend is running\n' +
-          '2. Your internet connection is working\n' +
-          '3. The backend URL is correct\n\n' +
-          'Backend URL: ' + BACKEND_URL + '\n\n' +
-          'Error: ' + healthError.message
-        );
-        return;
-      }
-      
-      // Call backend API to register doula
       const response = await apiPost('/auth/register-doula', registrationData);
       console.log('[Registration] Doula registered successfully:', response);
       
@@ -314,7 +288,6 @@ export default function DoulaRegistrationScreen() {
         throw new Error(response.error || 'Failed to register doula');
       }
       
-      // Create profile object with response data
       const profile: DoulaProfile = {
         id: response.userId,
         userType: 'doula',
@@ -343,7 +316,6 @@ export default function DoulaRegistrationScreen() {
       
       setUserProfile(profile);
       
-      // Save user ID and type to storage for session restoration
       const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
       await AsyncStorage.setItem('doula_connect_user_id', response.userId);
       await AsyncStorage.setItem('doula_connect_user_type', 'doula');
@@ -360,15 +332,19 @@ export default function DoulaRegistrationScreen() {
         name: error.name
       });
       
-      let errorMessage = error.message || 'Failed to create profile. Please try again.';
+      let errorMessage = 'Failed to create profile. Please try again.';
       
-      // Check if it's a navigation error
-      if (error.message && error.message.toLowerCase().includes('not found')) {
-        errorMessage = 'Navigation error: Payment screen not found. Please contact support.';
-        console.error('[Registration] NAVIGATION ERROR - Payment route not found');
+      if (error.message) {
+        if (error.message.includes('Network request failed') || error.message.includes('Network error')) {
+          errorMessage = 'Cannot connect to the server. Please check your internet connection and try again.';
+        } else if (error.message.includes('404') || error.message.includes('not found')) {
+          errorMessage = 'Server configuration error. Please contact support.';
+        } else {
+          errorMessage = error.message;
+        }
       }
       
-      Alert.alert('Error', errorMessage);
+      Alert.alert('Registration Error', errorMessage);
     }
   };
 
