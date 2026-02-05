@@ -24,12 +24,38 @@ export default function PaymentScreen() {
   const { userProfile, setUserProfile } = useUser();
   const [processing, setProcessing] = useState(false);
 
-  console.log('[Payment Native] User profile:', userProfile ? 'exists' : 'null');
+  console.log('[Payment Native] User profile:', userProfile ? {
+    id: userProfile.id,
+    email: userProfile.email,
+    userType: userProfile.userType
+  } : 'null');
 
   if (!userProfile) {
-    console.log('[Payment Native] No user profile, redirecting to welcome');
-    router.replace('/welcome');
-    return null;
+    console.log('[Payment Native] No user profile found');
+    return (
+      <SafeAreaView style={commonStyles.container}>
+        <View style={[commonStyles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+          <IconSymbol
+            ios_icon_name="exclamationmark.triangle"
+            android_material_icon_name="warning"
+            size={64}
+            color={colors.error}
+          />
+          <Text style={[commonStyles.title, { textAlign: 'center', marginTop: 16 }]}>
+            Profile Not Found
+          </Text>
+          <Text style={[styles.subtitle, { textAlign: 'center', marginTop: 8 }]}>
+            Please complete registration first
+          </Text>
+          <TouchableOpacity
+            style={[commonStyles.button, { marginTop: 24 }]}
+            onPress={() => router.replace('/welcome')}
+          >
+            <Text style={commonStyles.buttonText}>Back to Welcome</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   const isParent = userProfile.userType === 'parent';

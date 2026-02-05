@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Alert,
   Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -214,7 +215,11 @@ export default function DoulaRegistrationScreen() {
   };
 
   const handleSubmit = async () => {
-    console.log('[Registration] Submitting doula registration');
+    console.log('='.repeat(80));
+    console.log('[Registration] ===== DOULA REGISTRATION SUBMIT STARTED =====');
+    console.log('[Registration] Platform:', Platform.OS);
+    console.log('[Registration] Timestamp:', new Date().toISOString());
+    console.log('='.repeat(80));
     
     if (!firstName || !lastName || !state || !town || !zipCode) {
       Alert.alert('Error', 'Please fill in all required fields');
@@ -241,8 +246,11 @@ export default function DoulaRegistrationScreen() {
       return;
     }
 
+    let BACKEND_URL = '';
     try {
-      const { apiPost, isBackendConfigured, BACKEND_URL } = await import('@/utils/api');
+      const apiModule = await import('@/utils/api');
+      const { apiPost, isBackendConfigured } = apiModule;
+      BACKEND_URL = apiModule.BACKEND_URL;
       
       if (!isBackendConfigured()) {
         console.error('[Registration] Backend URL not configured');
@@ -282,11 +290,18 @@ export default function DoulaRegistrationScreen() {
       console.log('[Registration] Registration data:', JSON.stringify(registrationData, null, 2));
       
       const response = await apiPost('/auth/register-doula', registrationData);
-      console.log('[Registration] Doula registered successfully:', response);
+      console.log('[Registration] API response received');
+      console.log('[Registration] Response type:', typeof response);
+      console.log('[Registration] Response keys:', Object.keys(response || {}));
+      console.log('[Registration] Response:', JSON.stringify(response, null, 2));
       
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to register doula');
+      if (!response || !response.success) {
+        const errorMsg = response?.error || response?.message || 'Failed to register doula';
+        console.error('[Registration] Registration failed:', errorMsg);
+        throw new Error(errorMsg);
       }
+      
+      console.log('[Registration] Doula registered successfully, userId:', response.userId);
       
       const profile: DoulaProfile = {
         id: response.userId,
@@ -322,29 +337,44 @@ export default function DoulaRegistrationScreen() {
       console.log('[Registration] User session saved to storage');
       
       console.log('[Registration] Navigating to payment screen...');
-      router.push('/payment');
-      console.log('[Registration] Navigation command sent');
+      console.log('[Registration] Current route:', router);
+      console.log('[Registration] Attempting router.push("/payment")');
+      
+      try {
+        router.push('/payment');
+        console.log('[Registration] Navigation command sent successfully');
+      } catch (navError: any) {
+        console.error('[Registration] Navigation error:', navError);
+        Alert.alert('Navigation Error', 'Failed to navigate to payment screen: ' + navError.message);
+      }
     } catch (error: any) {
       console.error('[Registration] Error creating doula profile:', error);
       console.error('[Registration] Error details:', {
         message: error.message,
         stack: error.stack,
-        name: error.name
+        name: error.name,
+        fullError: JSON.stringify(error, null, 2)
       });
       
       let errorMessage = 'Failed to create profile. Please try again.';
+      let errorTitle = 'Registration Error';
       
       if (error.message) {
         if (error.message.includes('Network request failed') || error.message.includes('Network error')) {
-          errorMessage = 'Cannot connect to the server. Please check your internet connection and try again.';
+          errorTitle = 'Connection Error';
+          errorMessage = 'Cannot connect to the server. Please check your internet connection and try again.\n\nBackend URL: ' + BACKEND_URL;
         } else if (error.message.includes('404') || error.message.includes('not found')) {
-          errorMessage = 'Server configuration error. Please contact support.';
+          errorTitle = 'Server Error';
+          errorMessage = 'The registration endpoint was not found on the server.\n\nThis may mean:\n- The backend is not running\n- The backend URL is incorrect\n\nBackend URL: ' + BACKEND_URL + '\n\nError: ' + error.message;
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('fetch')) {
+          errorTitle = 'Network Error';
+          errorMessage = 'Unable to reach the server. Please check:\n- Your internet connection\n- The backend server is running\n\nBackend URL: ' + BACKEND_URL + '\n\nError: ' + error.message;
         } else {
-          errorMessage = error.message;
+          errorMessage = error.message + '\n\nBackend URL: ' + BACKEND_URL;
         }
       }
       
-      Alert.alert('Registration Error', errorMessage);
+      Alert.alert(errorTitle, errorMessage);
     }
   };
 

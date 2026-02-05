@@ -19,12 +19,43 @@ import { apiPost } from '@/utils/api';
 import * as WebBrowser from 'expo-web-browser';
 
 export default function PaymentScreen() {
+  console.log('[Payment] Screen mounted');
   const router = useRouter();
   const { userProfile, setUserProfile } = useUser();
   const [processing, setProcessing] = useState(false);
 
+  console.log('[Payment] User profile:', userProfile ? {
+    id: userProfile.id,
+    email: userProfile.email,
+    userType: userProfile.userType
+  } : 'null');
+
   if (!userProfile) {
-    return null;
+    console.log('[Payment] No user profile found');
+    return (
+      <SafeAreaView style={commonStyles.container}>
+        <View style={[commonStyles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+          <IconSymbol
+            ios_icon_name="exclamationmark.triangle"
+            android_material_icon_name="warning"
+            size={64}
+            color={colors.error}
+          />
+          <Text style={[commonStyles.title, { textAlign: 'center', marginTop: 16 }]}>
+            Profile Not Found
+          </Text>
+          <Text style={[styles.subtitle, { textAlign: 'center', marginTop: 8 }]}>
+            Please complete registration first
+          </Text>
+          <TouchableOpacity
+            style={[commonStyles.button, { marginTop: 24 }]}
+            onPress={() => router.replace('/welcome')}
+          >
+            <Text style={commonStyles.buttonText}>Back to Welcome</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   const isParent = userProfile.userType === 'parent';

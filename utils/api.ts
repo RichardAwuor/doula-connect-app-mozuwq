@@ -150,11 +150,16 @@ export const apiCall = async <T = any>(
     // Parse successful response
     try {
       const data = JSON.parse(text);
-      console.log("[API] Success:", data);
+      console.log("[API] Success response parsed");
+      console.log("[API] Response data type:", typeof data);
+      console.log("[API] Response data keys:", Object.keys(data || {}));
+      console.log("[API] Response data:", JSON.stringify(data, null, 2));
       return data;
     } catch (e) {
-      console.error("[API] Failed to parse response as JSON:", text);
-      throw new Error("Invalid response from server");
+      console.error("[API] Failed to parse response as JSON");
+      console.error("[API] Response text:", text);
+      console.error("[API] Parse error:", e);
+      throw new Error("Invalid response from server: " + text.substring(0, 100));
     }
   } catch (error: any) {
     console.error("[API] Request failed:", {
@@ -182,6 +187,7 @@ export const apiGet = async <T = any>(endpoint: string): Promise<T> => {
 
 /**
  * POST request helper
+ * Returns the response data directly without wrapping
  */
 export const apiPost = async <T = any>(
   endpoint: string,
