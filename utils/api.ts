@@ -50,7 +50,7 @@
  * - POST /comments
  * - GET /doulas/{doulaId}/comments
  * 
- * Payment Processing (Stripe):
+ * Payment Processing (PayPal):
  * - POST /payments/create-session
  * - POST /payments/webhook
  * - GET /subscriptions/{userId}

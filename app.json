@@ -1,13 +1,14 @@
+
 {
   "expo": {
     "name": "Doula Connect",
-    "slug": "doula-connect-app-mozuwq",
-    "version": "1.0.12",
+    "slug": "doula-connect",
+    "version": "1.0.13",
     "orientation": "portrait",
     "icon": "./assets/images/513e13a3-c9f9-4145-b2f8-d31f632a5ece.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "scheme": "Doula Connect",
+    "scheme": "doulaconnect",
     "splash": {
       "image": "./assets/images/2c7e0498-b523-4877-88ba-eae9afdb3794.png",
       "resizeMode": "contain",
@@ -27,8 +28,8 @@
         "backgroundColor": "#FFF5F0"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.simphoni.doula",
-      "versionCode": 13,
+      "package": "com.simphoni.doulaconnect",
+      "versionCode": 14,
       "icon": "./assets/images/513e13a3-c9f9-4145-b2f8-d31f632a5ece.png"
     },
     "web": {
@@ -47,6 +48,5 @@
       "router": {},
       "backendUrl": "https://58wab47v29usdn5dvkdh2bb8tmk9hce6.app.specular.dev"
     }
-  },
-  "scheme": "Doula Connect"
+  }
 }

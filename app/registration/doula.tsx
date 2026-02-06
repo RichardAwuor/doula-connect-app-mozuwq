@@ -295,7 +295,8 @@ export default function DoulaRegistrationScreen() {
       console.log('[Registration] Response keys:', Object.keys(response || {}));
       console.log('[Registration] Response:', JSON.stringify(response, null, 2));
       
-      if (!response || !response.success) {
+      // Backend returns { success: true, message: "...", userId: "..." }
+      if (!response || response.success !== true || !response.userId) {
         const errorMsg = response?.error || response?.message || 'Failed to register doula';
         console.error('[Registration] Registration failed:', errorMsg);
         throw new Error(errorMsg);
