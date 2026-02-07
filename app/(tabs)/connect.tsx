@@ -27,9 +27,9 @@ export default function ConnectScreen() {
   const [matches, setMatches] = useState<(DoulaProfile | ParentProfile)[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Comment state
-  const [commentText, setCommentText] = useState('');
-  const [submittingComment, setSubmittingComment] = useState(false);
+  // Rating state (replacing comment text)
+  const [selectedRating, setSelectedRating] = useState<Record<string, number>>({});
+  const [submittingRating, setSubmittingRating] = useState(false);
   const [commentEligibility, setCommentEligibility] = useState<Record<string, CommentEligibility>>({});
   const [doulaComments, setDoulaComments] = useState<Record<string, DoulaComment[]>>({});
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
@@ -264,26 +264,28 @@ export default function ConnectScreen() {
     }
   };
 
-  const handleSubmitComment = async (doulaId: string) => {
-    if (!userProfile || !commentText.trim()) {
-      Alert.alert('Error', 'Please enter a comment');
+  const handleSubmitRating = async (doulaId: string) => {
+    const rating = selectedRating[doulaId];
+    
+    if (!userProfile || !rating) {
+      Alert.alert('Error', 'Please select a rating');
       return;
     }
 
-    if (commentText.length > 160) {
-      Alert.alert('Error', 'Comment must be 160 characters or less');
+    if (rating < 1 || rating > 5) {
+      Alert.alert('Error', 'Rating must be between 1 and 5');
       return;
     }
 
     const eligibility = commentEligibility[doulaId];
     if (!eligibility?.canComment) {
-      Alert.alert('Error', 'You are not eligible to comment yet');
+      Alert.alert('Error', 'You are not eligible to rate yet');
       return;
     }
 
-    setSubmittingComment(true);
+    setSubmittingRating(true);
     try {
-      console.log('[Connect] Submitting comment for doula:', doulaId);
+      console.log('[Connect] Submitting rating for doula:', doulaId, 'Rating:', rating);
       
       const { apiPost } = await import('@/utils/api');
       const response = await apiPost('/comments', {
@@ -291,13 +293,14 @@ export default function ConnectScreen() {
         parentId: userProfile.id,
         doulaId: doulaId,
         parentName: `${userProfile.firstName} ${userProfile.lastName}`,
-        comment: commentText,
+        rating: rating,
+        comment: '', // Optional comment field (empty for now)
       });
       
-      console.log('[Connect] Comment submitted:', response);
+      console.log('[Connect] Rating submitted:', response);
       
       if (!response.success) {
-        throw new Error(response.error || 'Failed to submit comment');
+        throw new Error(response.error || 'Failed to submit rating');
       }
       
       const newComment: DoulaComment = {
@@ -306,7 +309,7 @@ export default function ConnectScreen() {
         parentId: userProfile.id,
         doulaId: doulaId,
         parentName: `${userProfile.firstName} ${userProfile.lastName}`,
-        comment: commentText,
+        rating: rating,
         createdAt: new Date(),
       };
       
@@ -320,17 +323,21 @@ export default function ConnectScreen() {
         [doulaId]: {
           canComment: false,
           hasExistingComment: true,
-          message: 'You have already commented on this contract',
+          message: 'You have already rated this doula',
         },
       }));
       
-      setCommentText('');
-      Alert.alert('Success', 'Your comment has been posted!');
+      setSelectedRating(prev => ({
+        ...prev,
+        [doulaId]: 0,
+      }));
+      
+      Alert.alert('Success', 'Your rating has been submitted!');
     } catch (error: any) {
-      console.error('[Connect] Error submitting comment:', error);
-      Alert.alert('Error', error.message || 'Failed to submit comment. Please try again.');
+      console.error('[Connect] Error submitting rating:', error);
+      Alert.alert('Error', error.message || 'Failed to submit rating. Please try again.');
     } finally {
-      setSubmittingComment(false);
+      setSubmittingRating(false);
     }
   };
 
@@ -345,41 +352,62 @@ export default function ConnectScreen() {
     const eligibility = commentEligibility[doulaId];
     const comments = doulaComments[doulaId] || [];
     const isExpanded = expandedComments[doulaId];
+    const currentRating = selectedRating[doulaId] || 0;
+
+    const ratingLabels = [
+      'No Recommendation',
+      'Poor',
+      'Average',
+      'Good',
+      'Best Recommendation',
+    ];
 
     return (
       <View style={styles.commentSection}>
-        {/* Comment Input (only if eligible) */}
+        {/* Rating Input (only if eligible) */}
         {eligibility?.canComment && (
-          <View style={styles.commentInputContainer}>
-            <Text style={styles.commentInputLabel}>Leave a comment about your experience:</Text>
-            <View style={styles.textInputWrapper}>
-              <TextInput
-                style={styles.commentInput}
-                placeholder="Share your experience (max 160 characters)"
-                placeholderTextColor={colors.textSecondary}
-                value={commentText}
-                onChangeText={setCommentText}
-                maxLength={160}
-                multiline
-                numberOfLines={3}
-                editable={!submittingComment}
-              />
-              <Text style={styles.characterCount}>
-                {commentText.length}/160
-              </Text>
+          <View style={styles.ratingInputContainer}>
+            <Text style={styles.ratingInputLabel}>Rate your experience with this doula:</Text>
+            
+            {/* Star Rating Selector */}
+            <View style={styles.starContainer}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setSelectedRating(prev => ({ ...prev, [doulaId]: star }))}
+                  style={styles.starButton}
+                  disabled={submittingRating}
+                >
+                  <IconSymbol
+                    ios_icon_name={currentRating >= star ? 'star.fill' : 'star'}
+                    android_material_icon_name={currentRating >= star ? 'star' : 'star-border'}
+                    size={40}
+                    color={currentRating >= star ? colors.accent : colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              ))}
             </View>
+            
+            {/* Rating Label */}
+            {currentRating > 0 && (
+              <Text style={styles.ratingLabel}>
+                {ratingLabels[currentRating - 1]}
+              </Text>
+            )}
+            
+            {/* Submit Button */}
             <TouchableOpacity
               style={[
                 styles.submitButton,
-                (!commentText.trim() || submittingComment) && styles.submitButtonDisabled,
+                (currentRating === 0 || submittingRating) && styles.submitButtonDisabled,
               ]}
-              onPress={() => handleSubmitComment(doulaId)}
-              disabled={!commentText.trim() || submittingComment}
+              onPress={() => handleSubmitRating(doulaId)}
+              disabled={currentRating === 0 || submittingRating}
             >
-              {submittingComment ? (
+              {submittingRating ? (
                 <ActivityIndicator size="small" color={colors.background} />
               ) : (
-                <Text style={styles.submitButtonText}>Submit Comment</Text>
+                <Text style={styles.submitButtonText}>Submit Rating</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -414,7 +442,7 @@ export default function ConnectScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Existing Comments */}
+        {/* Existing Ratings */}
         {comments.length > 0 && (
           <View style={styles.commentsContainer}>
             <TouchableOpacity
@@ -422,7 +450,7 @@ export default function ConnectScreen() {
               onPress={() => toggleComments(doulaId)}
             >
               <Text style={styles.commentsHeaderText}>
-                Comments ({comments.length})
+                Ratings ({comments.length})
               </Text>
               <IconSymbol
                 ios_icon_name={isExpanded ? 'chevron.up' : 'chevron.down'}
@@ -434,17 +462,35 @@ export default function ConnectScreen() {
             
             {isExpanded && (
               <View style={styles.commentsList}>
-                {comments.map((comment) => (
-                  <View key={comment.id} style={styles.commentItem}>
-                    <View style={styles.commentHeader}>
-                      <Text style={styles.commentAuthor}>{comment.parentName}</Text>
-                      <Text style={styles.commentDate}>
-                        {new Date(comment.createdAt).toLocaleDateString()}
-                      </Text>
+                {comments.map((comment) => {
+                  const ratingValue = comment.rating;
+                  const ratingText = ratingLabels[ratingValue - 1] || 'Unknown';
+                  
+                  return (
+                    <View key={comment.id} style={styles.commentItem}>
+                      <View style={styles.commentHeader}>
+                        <Text style={styles.commentAuthor}>{comment.parentName}</Text>
+                        <Text style={styles.commentDate}>
+                          {new Date(comment.createdAt).toLocaleDateString()}
+                        </Text>
+                      </View>
+                      
+                      {/* Star Display */}
+                      <View style={styles.ratingDisplay}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <IconSymbol
+                            key={star}
+                            ios_icon_name={ratingValue >= star ? 'star.fill' : 'star'}
+                            android_material_icon_name={ratingValue >= star ? 'star' : 'star-border'}
+                            size={16}
+                            color={ratingValue >= star ? colors.accent : colors.textSecondary}
+                          />
+                        ))}
+                        <Text style={styles.ratingDisplayText}>({ratingText})</Text>
+                      </View>
                     </View>
-                    <Text style={styles.commentText}>{comment.comment}</Text>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             )}
           </View>
@@ -765,42 +811,38 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 16,
   },
-  // Comment Section Styles
+  // Rating Section Styles
   commentSection: {
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  commentInputContainer: {
+  ratingInputContainer: {
     marginBottom: 16,
   },
-  commentInputLabel: {
+  ratingInputLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: 12,
+    textAlign: 'center',
   },
-  textInputWrapper: {
-    position: 'relative',
+  starContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  commentInput: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 14,
-    color: colors.text,
-    minHeight: 80,
-    textAlignVertical: 'top',
-    borderWidth: 1,
-    borderColor: colors.border,
+  starButton: {
+    padding: 4,
   },
-  characterCount: {
-    position: 'absolute',
-    bottom: 8,
-    right: 12,
-    fontSize: 12,
-    color: colors.textSecondary,
+  ratingLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.accent,
+    textAlign: 'center',
+    marginBottom: 12,
   },
   submitButton: {
     backgroundColor: colors.primary,
@@ -873,7 +915,7 @@ const styles = StyleSheet.create({
   commentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   commentAuthor: {
     fontSize: 14,
@@ -884,9 +926,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
   },
-  commentText: {
-    fontSize: 14,
-    color: colors.text,
-    lineHeight: 20,
+  ratingDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingDisplayText: {
+    marginLeft: 8,
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
   },
 });

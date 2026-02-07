@@ -87,14 +87,14 @@ export interface JobContract {
   createdAt: Date;
 }
 
-// Comment Types
+// Comment Types (now using ratings)
 export interface DoulaComment {
   id: string;
   contractId: string;
   parentId: string;
   doulaId: string;
   parentName: string;
-  comment: string;
+  rating: number; // 1-5 scale
   createdAt: Date;
 }
 
