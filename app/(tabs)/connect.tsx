@@ -699,7 +699,7 @@ export default function ConnectScreen() {
                 ios_icon_name="heart"
                 android_material_icon_name="favorite-border"
                 size={64}
-                color={colors.textSecondary}
+                color={colors.primary}
               />
               <Text style={styles.emptyText}>No matches found</Text>
               <Text style={styles.emptySubtext}>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   View,
@@ -117,7 +118,7 @@ export default function FloatingTabBar({
     };
   });
 
-  // Dynamic styles based on theme
+  // Dynamic styles based on theme - CHANGED: indicator background to magenta
   const dynamicStyles = {
     blurContainer: {
       ...styles.blurContainer,
@@ -147,9 +148,7 @@ export default function FloatingTabBar({
     },
     indicator: {
       ...styles.indicator,
-      backgroundColor: theme.dark
-        ? 'rgba(255, 255, 255, 0.08)' // Subtle white overlay in dark mode
-        : 'rgba(0, 0, 0, 0.04)', // Subtle black overlay in light mode
+      backgroundColor: '#FF69B4', // CHANGED: Magenta color instead of theme-based
       width: `${tabWidthPercent}%` as `${number}%`, // Dynamic width based on number of tabs
     },
   };

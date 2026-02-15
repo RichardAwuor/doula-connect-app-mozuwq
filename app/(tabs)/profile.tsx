@@ -151,115 +151,20 @@ export default function ProfileScreen() {
     );
   };
 
-  const renderParentProfile = (profile: ParentProfile) => (
-    <>
-      <View style={commonStyles.card}>
-        <View style={styles.profileHeader}>
-          <View style={styles.avatarPlaceholder}>
-            <IconSymbol
-              ios_icon_name="person.fill"
-              android_material_icon_name="person"
-              size={48}
-              color={colors.card}
-            />
-          </View>
-          <View style={styles.profileHeaderText}>
-            <Text style={styles.profileName}>
-              {profile.firstName} {profile.lastName}
-            </Text>
-            <Text style={styles.profileType}>New Parent</Text>
-          </View>
-        </View>
-      </View>
+  const renderParentProfile = (profile: ParentProfile) => {
+    const firstNameDisplay = profile.firstName || '';
+    const lastNameDisplay = profile.lastName || '';
+    const fullName = `${firstNameDisplay} ${lastNameDisplay}`.trim() || 'New Parent';
+    const emailDisplay = profile.email || '';
+    const townDisplay = profile.town || '';
+    const stateDisplay = profile.state || '';
+    const zipCodeDisplay = profile.zipCode || '';
+    const locationText = `${townDisplay}, ${stateDisplay} ${zipCodeDisplay}`.trim();
 
-      <View style={commonStyles.card}>
-        <Text style={commonStyles.subtitle}>Location</Text>
-        <View style={styles.infoRow}>
-          <IconSymbol
-            ios_icon_name="location"
-            android_material_icon_name="location-on"
-            size={20}
-            color={colors.primary}
-          />
-          <Text style={styles.infoText}>
-            {profile.town}, {profile.state} {profile.zipCode}
-          </Text>
-        </View>
-      </View>
-
-      <View style={commonStyles.card}>
-        <Text style={commonStyles.subtitle}>Service Requirements</Text>
-        <Text style={styles.label}>Service Categories:</Text>
-        <View style={styles.badgeContainer}>
-          {profile.serviceCategories.map((cat) => (
-            <View key={cat} style={commonStyles.badge}>
-              <Text style={commonStyles.badgeText}>
-                {cat === 'birth' ? 'Birth Doula' : 'Postpartum Doula'}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        <Text style={styles.label}>Financing Type:</Text>
-        <View style={styles.badgeContainer}>
-          {profile.financingType.map((fin) => (
-            <View key={fin} style={commonStyles.badge}>
-              <Text style={commonStyles.badgeText}>
-                {fin === 'self' ? 'Self Pay' : fin === 'carrot' ? 'CARROT' : 'Medicaid'}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        {profile.servicePeriodStart && profile.servicePeriodEnd && (
-          <>
-            <Text style={styles.label}>Service Period:</Text>
-            <Text style={styles.infoText}>
-              {profile.servicePeriodStart.toLocaleDateString()} -{' '}
-              {profile.servicePeriodEnd.toLocaleDateString()}
-            </Text>
-          </>
-        )}
-      </View>
-
-      <View style={commonStyles.card}>
-        <Text style={commonStyles.subtitle}>Preferences</Text>
-        {profile.preferredLanguages.length > 0 && (
-          <>
-            <Text style={styles.label}>Languages:</Text>
-            <View style={styles.badgeContainer}>
-              {profile.preferredLanguages.map((lang) => (
-                <View key={lang} style={commonStyles.badge}>
-                  <Text style={commonStyles.badgeText}>{lang}</Text>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-
-        {profile.desiredDays.length > 0 && (
-          <>
-            <Text style={styles.label}>Desired Days:</Text>
-            <View style={styles.badgeContainer}>
-              {profile.desiredDays.map((day) => (
-                <View key={day} style={commonStyles.badge}>
-                  <Text style={commonStyles.badgeText}>{day}</Text>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-      </View>
-    </>
-  );
-
-  const renderDoulaProfile = (profile: DoulaProfile) => (
-    <>
-      <View style={commonStyles.card}>
-        <View style={styles.profileHeader}>
-          {profile.profilePicture ? (
-            <Image source={{ uri: profile.profilePicture.uri }} style={styles.profileImage} />
-          ) : (
+    return (
+      <>
+        <View style={commonStyles.card}>
+          <View style={styles.profileHeader}>
             <View style={styles.avatarPlaceholder}>
               <IconSymbol
                 ios_icon_name="person.fill"
@@ -268,107 +173,270 @@ export default function ProfileScreen() {
                 color={colors.card}
               />
             </View>
+            <View style={styles.profileHeaderText}>
+              <Text style={styles.profileName}>{fullName}</Text>
+              <Text style={styles.profileType}>New Parent</Text>
+              {emailDisplay && (
+                <Text style={styles.profileEmail}>{emailDisplay}</Text>
+              )}
+            </View>
+          </View>
+        </View>
+
+        <View style={commonStyles.card}>
+          <Text style={commonStyles.subtitle}>Location</Text>
+          <View style={styles.infoRow}>
+            <IconSymbol
+              ios_icon_name="location"
+              android_material_icon_name="location-on"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={styles.infoText}>{locationText}</Text>
+          </View>
+        </View>
+
+        <View style={commonStyles.card}>
+          <Text style={commonStyles.subtitle}>Service Requirements</Text>
+          <Text style={styles.label}>Service Categories:</Text>
+          <View style={styles.badgeContainer}>
+            {profile.serviceCategories && profile.serviceCategories.length > 0 ? (
+              profile.serviceCategories.map((cat) => {
+                const categoryLabel = cat === 'birth' ? 'Birth Doula' : 'Postpartum Doula';
+                return (
+                  <View key={cat} style={commonStyles.badge}>
+                    <Text style={commonStyles.badgeText}>{categoryLabel}</Text>
+                  </View>
+                );
+              })
+            ) : (
+              <Text style={styles.infoText}>No service categories selected</Text>
+            )}
+          </View>
+
+          <Text style={styles.label}>Financing Type:</Text>
+          <View style={styles.badgeContainer}>
+            {profile.financingType && profile.financingType.length > 0 ? (
+              profile.financingType.map((fin) => {
+                const financingLabel = fin === 'self' ? 'Self Pay' : fin === 'carrot' ? 'CARROT' : 'Medicaid';
+                return (
+                  <View key={fin} style={commonStyles.badge}>
+                    <Text style={commonStyles.badgeText}>{financingLabel}</Text>
+                  </View>
+                );
+              })
+            ) : (
+              <Text style={styles.infoText}>No financing type selected</Text>
+            )}
+          </View>
+
+          {profile.servicePeriodStart && profile.servicePeriodEnd && (
+            <>
+              <Text style={styles.label}>Service Period:</Text>
+              <Text style={styles.infoText}>
+                {profile.servicePeriodStart.toLocaleDateString()} - {profile.servicePeriodEnd.toLocaleDateString()}
+              </Text>
+            </>
           )}
-          <View style={styles.profileHeaderText}>
-            <Text style={styles.profileName}>
-              {profile.firstName} {profile.lastName}
-            </Text>
-            <Text style={styles.profileType}>Certified Doula</Text>
-            {profile.rating && (
-              <View style={styles.ratingContainer}>
-                <IconSymbol
-                  ios_icon_name="star.fill"
-                  android_material_icon_name="star"
-                  size={16}
-                  color={colors.accent}
-                />
-                <Text style={styles.ratingText}>
-                  {profile.rating} ({profile.reviewCount} reviews)
-                </Text>
+        </View>
+
+        <View style={commonStyles.card}>
+          <Text style={commonStyles.subtitle}>Preferences</Text>
+          {profile.preferredLanguages && profile.preferredLanguages.length > 0 && (
+            <>
+              <Text style={styles.label}>Languages:</Text>
+              <View style={styles.badgeContainer}>
+                {profile.preferredLanguages.map((lang) => (
+                  <View key={lang} style={commonStyles.badge}>
+                    <Text style={commonStyles.badgeText}>{lang}</Text>
+                  </View>
+                ))}
               </View>
+            </>
+          )}
+
+          {profile.desiredDays && profile.desiredDays.length > 0 && (
+            <>
+              <Text style={styles.label}>Desired Days:</Text>
+              <View style={styles.badgeContainer}>
+                {profile.desiredDays.map((day) => (
+                  <View key={day} style={commonStyles.badge}>
+                    <Text style={commonStyles.badgeText}>{day}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {profile.desiredStartTime && profile.desiredEndTime && (
+            <>
+              <Text style={styles.label}>Desired Hours:</Text>
+              <Text style={styles.infoText}>
+                {profile.desiredStartTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {profile.desiredEndTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+            </>
+          )}
+        </View>
+      </>
+    );
+  };
+
+  const renderDoulaProfile = (profile: DoulaProfile) => {
+    const firstNameDisplay = profile.firstName || '';
+    const lastNameDisplay = profile.lastName || '';
+    const fullName = `${firstNameDisplay} ${lastNameDisplay}`.trim() || 'Certified Doula';
+    const emailDisplay = profile.email || '';
+    const townDisplay = profile.town || '';
+    const stateDisplay = profile.state || '';
+    const zipCodeDisplay = profile.zipCode || '';
+    const locationText = `${townDisplay}, ${stateDisplay} ${zipCodeDisplay}`.trim();
+    const driveDistanceDisplay = profile.driveDistance || 0;
+    const hourlyRateMinDisplay = profile.hourlyRateMin || 0;
+    const hourlyRateMaxDisplay = profile.hourlyRateMax || 0;
+
+    return (
+      <>
+        <View style={commonStyles.card}>
+          <View style={styles.profileHeader}>
+            {profile.profilePicture ? (
+              <Image source={{ uri: profile.profilePicture.uri }} style={styles.profileImage} />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <IconSymbol
+                  ios_icon_name="person.fill"
+                  android_material_icon_name="person"
+                  size={48}
+                  color={colors.card}
+                />
+              </View>
+            )}
+            <View style={styles.profileHeaderText}>
+              <Text style={styles.profileName}>{fullName}</Text>
+              <Text style={styles.profileType}>Certified Doula</Text>
+              {emailDisplay && (
+                <Text style={styles.profileEmail}>{emailDisplay}</Text>
+              )}
+              {profile.rating && (
+                <View style={styles.ratingContainer}>
+                  <IconSymbol
+                    ios_icon_name="star.fill"
+                    android_material_icon_name="star"
+                    size={16}
+                    color={colors.accent}
+                  />
+                  <Text style={styles.ratingText}>
+                    {profile.rating} ({profile.reviewCount} reviews)
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+
+        <View style={commonStyles.card}>
+          <Text style={commonStyles.subtitle}>Location & Availability</Text>
+          <View style={styles.infoRow}>
+            <IconSymbol
+              ios_icon_name="location"
+              android_material_icon_name="location-on"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={styles.infoText}>{locationText}</Text>
+          </View>
+          <Text style={styles.infoText}>Drive distance: up to {driveDistanceDisplay} miles</Text>
+        </View>
+
+        <View style={commonStyles.card}>
+          <Text style={commonStyles.subtitle}>Services & Rates</Text>
+          <Text style={styles.label}>Service Categories:</Text>
+          <View style={styles.badgeContainer}>
+            {profile.serviceCategories && profile.serviceCategories.length > 0 ? (
+              profile.serviceCategories.map((cat) => {
+                const categoryLabel = cat === 'birth' ? 'Birth Doula' : 'Postpartum Doula';
+                return (
+                  <View key={cat} style={commonStyles.badge}>
+                    <Text style={commonStyles.badgeText}>{categoryLabel}</Text>
+                  </View>
+                );
+              })
+            ) : (
+              <Text style={styles.infoText}>No service categories selected</Text>
+            )}
+          </View>
+
+          <Text style={styles.label}>Hourly Rate:</Text>
+          <Text style={styles.infoText}>
+            ${hourlyRateMinDisplay} - ${hourlyRateMaxDisplay} per hour
+          </Text>
+
+          <Text style={styles.label}>Payment Preferences:</Text>
+          <View style={styles.badgeContainer}>
+            {profile.paymentPreferences && profile.paymentPreferences.length > 0 ? (
+              profile.paymentPreferences.map((pref) => {
+                const paymentLabel = pref === 'self' ? 'Direct Cash' : pref === 'carrot' ? 'CARROT' : 'Medicaid';
+                return (
+                  <View key={pref} style={commonStyles.badge}>
+                    <Text style={commonStyles.badgeText}>{paymentLabel}</Text>
+                  </View>
+                );
+              })
+            ) : (
+              <Text style={styles.infoText}>No payment preferences selected</Text>
             )}
           </View>
         </View>
-      </View>
 
-      <View style={commonStyles.card}>
-        <Text style={commonStyles.subtitle}>Location & Availability</Text>
-        <View style={styles.infoRow}>
-          <IconSymbol
-            ios_icon_name="location"
-            android_material_icon_name="location-on"
-            size={20}
-            color={colors.primary}
-          />
-          <Text style={styles.infoText}>
-            {profile.town}, {profile.state} {profile.zipCode}
-          </Text>
+        <View style={commonStyles.card}>
+          <Text style={commonStyles.subtitle}>Languages & Certifications</Text>
+          {profile.spokenLanguages && profile.spokenLanguages.length > 0 && (
+            <>
+              <Text style={styles.label}>Languages:</Text>
+              <View style={styles.badgeContainer}>
+                {profile.spokenLanguages.map((lang) => (
+                  <View key={lang} style={commonStyles.badge}>
+                    <Text style={commonStyles.badgeText}>{lang}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {profile.certifications && profile.certifications.length > 0 && (
+            <>
+              <Text style={styles.label}>Certifications:</Text>
+              <View style={styles.badgeContainer}>
+                {profile.certifications.map((cert) => {
+                  const certLabel = cert.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+                  return (
+                    <View key={cert} style={[commonStyles.badge, { backgroundColor: colors.secondary }]}>
+                      <Text style={commonStyles.badgeText}>{certLabel}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          )}
+
+          {profile.referees && profile.referees.length > 0 && (
+            <>
+              <Text style={styles.label}>Referees:</Text>
+              {profile.referees.map((referee, index) => {
+                const refereeFullName = `${referee.firstName} ${referee.lastName}`.trim();
+                const refereeEmail = referee.email;
+                return (
+                  <View key={index} style={styles.refereeItem}>
+                    <Text style={styles.refereeName}>{refereeFullName}</Text>
+                    <Text style={styles.refereeEmail}>{refereeEmail}</Text>
+                  </View>
+                );
+              })}
+            </>
+          )}
         </View>
-        <Text style={styles.infoText}>Drive distance: up to {profile.driveDistance} miles</Text>
-      </View>
-
-      <View style={commonStyles.card}>
-        <Text style={commonStyles.subtitle}>Services & Rates</Text>
-        <Text style={styles.label}>Service Categories:</Text>
-        <View style={styles.badgeContainer}>
-          {profile.serviceCategories.map((cat) => (
-            <View key={cat} style={commonStyles.badge}>
-              <Text style={commonStyles.badgeText}>
-                {cat === 'birth' ? 'Birth Doula' : 'Postpartum Doula'}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        <Text style={styles.label}>Hourly Rate:</Text>
-        <Text style={styles.infoText}>
-          ${profile.hourlyRateMin} - ${profile.hourlyRateMax} per hour
-        </Text>
-
-        <Text style={styles.label}>Payment Preferences:</Text>
-        <View style={styles.badgeContainer}>
-          {profile.paymentPreferences.map((pref) => (
-            <View key={pref} style={commonStyles.badge}>
-              <Text style={commonStyles.badgeText}>
-                {pref === 'self' ? 'Direct Cash' : pref === 'carrot' ? 'CARROT' : 'Medicaid'}
-              </Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View style={commonStyles.card}>
-        <Text style={commonStyles.subtitle}>Languages & Certifications</Text>
-        {profile.spokenLanguages.length > 0 && (
-          <>
-            <Text style={styles.label}>Languages:</Text>
-            <View style={styles.badgeContainer}>
-              {profile.spokenLanguages.map((lang) => (
-                <View key={lang} style={commonStyles.badge}>
-                  <Text style={commonStyles.badgeText}>{lang}</Text>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-
-        {profile.certifications.length > 0 && (
-          <>
-            <Text style={styles.label}>Certifications:</Text>
-            <View style={styles.badgeContainer}>
-              {profile.certifications.map((cert) => (
-                <View key={cert} style={[commonStyles.badge, { backgroundColor: colors.secondary }]}>
-                  <Text style={commonStyles.badgeText}>
-                    {cert.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-      </View>
-    </>
-  );
+      </>
+    );
+  };
 
   return (
     <SafeAreaView style={commonStyles.container}>
@@ -494,6 +562,11 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: 4,
   },
+  profileEmail: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -559,5 +632,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: 24,
+  },
+  refereeItem: {
+    backgroundColor: colors.secondary,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  refereeName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  refereeEmail: {
+    fontSize: 13,
+    color: colors.textSecondary,
   },
 });
