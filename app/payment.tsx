@@ -14,12 +14,9 @@ import { useRouter } from 'expo-router';
 import { useUser } from '@/contexts/UserContext';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors, commonStyles } from '@/styles/commonStyles';
-import Constants from 'expo-constants';
-import { apiPost } from '@/utils/api';
-import * as WebBrowser from 'expo-web-browser';
 
 export default function PaymentScreen() {
-  console.log('[Payment] Screen mounted');
+  console.log('[Payment] Screen mounted - SIMULATED MODE');
   const router = useRouter();
   const { userProfile, setUserProfile } = useUser();
   const [processing, setProcessing] = useState(false);
@@ -62,8 +59,8 @@ export default function PaymentScreen() {
   const subscriptionFee = 99;
   const subscriptionPeriod = isParent ? 'Annual' : 'Monthly';
 
-  const handlePayment = async () => {
-    console.log('[Payment] Creating PayPal payment session...');
+  const handleSimulatedPayment = async () => {
+    console.log('[Payment] Starting simulated payment process...');
     console.log('[Payment] User profile:', {
       id: userProfile.id,
       email: userProfile.email,
@@ -72,134 +69,43 @@ export default function PaymentScreen() {
     
     setProcessing(true);
 
+    // Simulate payment processing delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
     try {
-      const requestData = {
-        userId: userProfile.id,
-        userType: userProfile.userType,
-        planType: isParent ? 'annual' : 'monthly',
-        email: userProfile.email,
+      // Update local profile to mark subscription as active
+      const updatedProfile = {
+        ...userProfile,
+        subscriptionActive: true,
       };
       
-      console.log('[Payment] Sending payment request:', requestData);
+      setUserProfile(updatedProfile);
       
-      const response = await apiPost('/payments/create-session', requestData);
+      // Save to AsyncStorage
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      await AsyncStorage.setItem('doula_connect_subscription_active', 'true');
+      console.log('[Payment] Subscription marked as active in local storage');
       
-      console.log('[Payment] PayPal payment session created:', response);
-
-      if (response.success && response.approvalUrl) {
-        console.log('[Payment] Opening PayPal Checkout:', response.approvalUrl);
-        
-        // Open PayPal Checkout in browser
-        const result = await WebBrowser.openBrowserAsync(response.approvalUrl);
-        console.log('[Payment] Browser result:', result);
-        
-        // After user closes the browser, check subscription status
-        if (result.type === 'cancel' || result.type === 'dismiss') {
-          console.log('[Payment] User closed checkout, checking subscription status...');
-          
-          // Wait a bit for webhook to process
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          try {
-            const { apiGet } = await import('@/utils/api');
-            const subscription = await apiGet(`/subscriptions/${userProfile.id}`);
-            console.log('[Payment] Subscription status:', subscription);
-            
-            if (subscription.status === 'active') {
-              // Update local profile
-              setUserProfile({
-                ...userProfile,
-                subscriptionActive: true,
-              });
-              
-              Alert.alert(
-                'Payment Successful',
-                'Your subscription is now active!',
-                [
-                  {
-                    text: 'Continue',
-                    onPress: () => {
-                      router.replace('/(tabs)/connect');
-                    }
-                  }
-                ]
-              );
-            } else {
-              Alert.alert(
-                'Payment Status',
-                'Please complete the payment to activate your subscription.',
-                [
-                  {
-                    text: 'Try Again',
-                    onPress: () => setProcessing(false)
-                  }
-                ]
-              );
-            }
-          } catch (error: any) {
-            console.error('[Payment] Error checking subscription:', error);
-            Alert.alert(
-              'Payment Status Unknown',
-              'Please check your subscription status in your profile.',
-              [
-                {
-                  text: 'OK',
-                  onPress: () => setProcessing(false)
-                }
-              ]
-            );
-          }
-        }
-        
-        setProcessing(false);
-      } else {
-        throw new Error(response.error || 'Failed to create payment session');
-      }
-    } catch (error: any) {
-      console.error('[Payment] Payment error:', error);
-      console.error('[Payment] Error message:', error.message);
-      
-      let errorTitle = 'Payment Error';
-      let errorMessage = 'An error occurred while processing your payment. Please try again.';
-      
-      // Check for specific error messages
-      if (error.message) {
-        const msg = error.message.toLowerCase();
-        
-        // PayPal not configured
-        if (msg.includes('paypal') && (msg.includes('not available') || msg.includes('disabled') || msg.includes('environment variables'))) {
-          errorTitle = 'Payment System Unavailable';
-          errorMessage = 'The payment system is currently being configured. Please contact support or try again later.\n\nError: PayPal credentials not configured on the server.';
-        }
-        // Service unavailable
-        else if (msg.includes('503') || msg.includes('service unavailable')) {
-          errorTitle = 'Service Unavailable';
-          errorMessage = 'The payment service is temporarily unavailable. Please try again in a few minutes.';
-        }
-        // Network errors
-        else if (msg.includes('network') || msg.includes('fetch')) {
-          errorTitle = 'Connection Error';
-          errorMessage = 'Unable to connect to the payment server. Please check your internet connection and try again.';
-        }
-        // Backend not configured
-        else if (msg.includes('backend url not configured')) {
-          errorTitle = 'Configuration Error';
-          errorMessage = 'The app is not properly configured. Please contact support.';
-        }
-        // Generic server error
-        else if (msg.includes('server error')) {
-          errorTitle = 'Server Error';
-          errorMessage = 'A server error occurred. Please try again later or contact support.';
-        }
-        // Use the actual error message if none of the above match
-        else {
-          errorMessage = error.message;
-        }
-      }
+      console.log('[Payment] Simulated payment successful!');
       
       Alert.alert(
-        errorTitle,
-        errorMessage,
+        'Payment Successful',
+        'Your subscription is now active! You have full access to all app features.',
+        [
+          {
+            text: 'Continue',
+            onPress: () => {
+              console.log('[Payment] Navigating to Connect screen');
+              router.replace('/(tabs)/connect');
+            }
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error('[Payment] Error during simulated payment:', error);
+      Alert.alert(
+        'Error',
+        'An error occurred while activating your subscription. Please try again.',
         [
           {
             text: 'OK',
@@ -207,8 +113,45 @@ export default function PaymentScreen() {
           }
         ]
       );
-      setProcessing(false);
     }
+  };
+
+  const handleSkipPayment = () => {
+    console.log('[Payment] User chose to skip payment');
+    Alert.alert(
+      'Skip Payment',
+      'Are you sure you want to skip payment and access the app with full features?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Skip & Continue',
+          onPress: async () => {
+            try {
+              // Update local profile to mark subscription as active
+              const updatedProfile = {
+                ...userProfile,
+                subscriptionActive: true,
+              };
+              
+              setUserProfile(updatedProfile);
+              
+              // Save to AsyncStorage
+              const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+              await AsyncStorage.setItem('doula_connect_subscription_active', 'true');
+              console.log('[Payment] Subscription marked as active (skipped payment)');
+              
+              router.replace('/(tabs)/connect');
+            } catch (error: any) {
+              console.error('[Payment] Error skipping payment:', error);
+              Alert.alert('Error', 'Failed to skip payment. Please try again.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -216,15 +159,30 @@ export default function PaymentScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <IconSymbol
-            ios_icon_name="creditcard"
-            android_material_icon_name="payment"
+            ios_icon_name="checkmark.circle"
+            android_material_icon_name="check-circle"
             size={64}
+            color={colors.success}
+          />
+          <Text style={commonStyles.title}>Payment Simulation</Text>
+          <Text style={styles.subtitle}>
+            Payment integration is temporarily disabled. You can simulate payment or skip to access all features.
+          </Text>
+        </View>
+
+        <View style={[commonStyles.card, styles.demoNotice]}>
+          <IconSymbol
+            ios_icon_name="info.circle"
+            android_material_icon_name="info"
+            size={24}
             color={colors.primary}
           />
-          <Text style={commonStyles.title}>Subscription Payment</Text>
-          <Text style={styles.subtitle}>
-            Complete your subscription to start connecting
-          </Text>
+          <View style={styles.demoNoticeText}>
+            <Text style={styles.demoNoticeTitle}>Demo Mode Active</Text>
+            <Text style={styles.demoNoticeSubtitle}>
+              Payment processing is currently disabled. You can proceed without payment to test all app features.
+            </Text>
+          </View>
         </View>
 
         <View style={commonStyles.card}>
@@ -254,78 +212,54 @@ export default function PaymentScreen() {
             <Text style={styles.totalValue}>${subscriptionFee}.00 USD</Text>
           </View>
 
-          <Text style={styles.renewalNote}>
-            Your subscription will automatically renew {isParent ? 'annually' : 'monthly'}.
-            You can cancel anytime from your profile settings.
-          </Text>
-        </View>
-
-        <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>Payment Method</Text>
-          <View style={styles.paymentMethodContainer}>
-            <IconSymbol
-              ios_icon_name="creditcard"
-              android_material_icon_name="credit-card"
-              size={32}
-              color={colors.primary}
-            />
-            <View style={styles.paymentMethodText}>
-              <Text style={styles.paymentMethodTitle}>Secure Payment via PayPal</Text>
-              <Text style={styles.paymentMethodSubtitle}>
-                Your payment information is encrypted and secure
-              </Text>
-            </View>
+          <View style={styles.demoTag}>
+            <Text style={styles.demoTagText}>SIMULATED - NO ACTUAL CHARGE</Text>
           </View>
-        </View>
-
-        <View style={commonStyles.card}>
-          <View style={styles.securityBadge}>
-            <IconSymbol
-              ios_icon_name="lock.shield"
-              android_material_icon_name="lock"
-              size={24}
-              color={colors.success}
-            />
-            <Text style={styles.securityText}>
-              Secure payment processing powered by PayPal
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.webNotice}>
-          <IconSymbol
-            ios_icon_name="info.circle"
-            android_material_icon_name="info"
-            size={20}
-            color={colors.primary}
-          />
-          <Text style={styles.webNoticeText}>
-            You will be redirected to PayPal to complete your payment
-          </Text>
         </View>
 
         <TouchableOpacity
           style={[commonStyles.button, processing && styles.buttonDisabled]}
-          onPress={handlePayment}
+          onPress={handleSimulatedPayment}
           disabled={processing}
         >
-          <Text style={commonStyles.buttonText}>
-            {processing ? 'Processing...' : `Pay $${subscriptionFee}.00`}
+          <IconSymbol
+            ios_icon_name="checkmark.circle.fill"
+            android_material_icon_name="check-circle"
+            size={20}
+            color="#FFFFFF"
+          />
+          <Text style={[commonStyles.buttonText, { marginLeft: 8 }]}>
+            {processing ? 'Processing...' : 'Simulate Payment & Continue'}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={commonStyles.outlineButton}
+          style={[commonStyles.outlineButton, { marginTop: 12 }]}
+          onPress={handleSkipPayment}
+          disabled={processing}
+        >
+          <Text style={commonStyles.outlineButtonText}>Skip Payment & Access App</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[commonStyles.outlineButton, { marginTop: 12 }]}
           onPress={() => router.back()}
           disabled={processing}
         >
           <Text style={commonStyles.outlineButtonText}>Back</Text>
         </TouchableOpacity>
 
-        <Text style={styles.termsText}>
-          By completing this payment, you agree to our Terms of Service and Privacy Policy.
-          Your subscription will automatically renew unless cancelled.
-        </Text>
+        <View style={styles.infoBox}>
+          <IconSymbol
+            ios_icon_name="lightbulb"
+            android_material_icon_name="info"
+            size={20}
+            color={colors.primary}
+          />
+          <Text style={styles.infoText}>
+            This is a temporary solution to enable full app access while payment integration is being configured. All features are available without payment.
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -344,6 +278,28 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 8,
+  },
+  demoNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
+    borderWidth: 1,
+  },
+  demoNoticeText: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  demoNoticeTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.primary,
+    marginBottom: 4,
+  },
+  demoNoticeSubtitle: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
   },
   detailRow: {
     flexDirection: 'row',
@@ -379,62 +335,37 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.primary,
   },
-  renewalNote: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontStyle: 'italic',
-  },
-  paymentMethodContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  paymentMethodText: {
-    marginLeft: 16,
-    flex: 1,
-  },
-  paymentMethodTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  paymentMethodSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  securityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  securityText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: colors.success,
-    fontWeight: '600',
-  },
-  webNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    padding: 12,
+  demoTag: {
+    backgroundColor: colors.success,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 8,
-    marginBottom: 16,
+    alignSelf: 'center',
   },
-  webNoticeText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: colors.primary,
-    flex: 1,
+  demoTagText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    letterSpacing: 1,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
-  termsText: {
-    fontSize: 12,
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.card,
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 24,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+  infoText: {
+    marginLeft: 12,
+    fontSize: 14,
     color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 16,
-    lineHeight: 18,
+    flex: 1,
+    lineHeight: 20,
   },
 });
