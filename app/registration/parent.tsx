@@ -84,7 +84,9 @@ export default function ParentRegistrationScreen() {
       continue: { en: 'Continue to Payment', es: 'Continuar al Pago' },
       back: { en: 'Back', es: 'Atrás' },
       missingFieldsTitle: { en: 'Missing Required Fields', es: 'Campos Requeridos Faltantes' },
-      missingFieldsMessage: { en: 'Please fill in the following required fields:', es: 'Por favor complete los siguientes campos requeridos:' },
+      missingFieldsMessage: { en: 'Please complete all required fields:', es: 'Por favor complete todos los campos requeridos:' },
+      registrationError: { en: 'Registration Error', es: 'Error de Registro' },
+      serverError: { en: 'Server error occurred. Please try again later.', es: 'Ocurrió un error del servidor. Por favor intente más tarde.' },
     };
     return translations[key]?.[language] || key;
   };
@@ -143,13 +145,14 @@ export default function ParentRegistrationScreen() {
     
     const missingFields: string[] = [];
     
-    if (!firstName) missingFields.push(t('firstName'));
-    if (!lastName) missingFields.push(t('lastName'));
+    if (!firstName.trim()) missingFields.push(t('firstName'));
+    if (!lastName.trim()) missingFields.push(t('lastName'));
     if (!state) missingFields.push(t('state'));
     if (!town) missingFields.push(t('town'));
     if (!zipCode) missingFields.push(t('zipCode'));
     if (serviceCategories.length === 0) missingFields.push(t('serviceCategory'));
     if (financingTypes.length === 0) missingFields.push(t('financingType'));
+    if (desiredDays.length === 0) missingFields.push(t('desiredDays'));
     if (!desiredStartTime) missingFields.push(t('startTime'));
     if (!desiredEndTime) missingFields.push(t('endTime'));
     if (!acceptedTerms) missingFields.push(t('terms'));
@@ -183,8 +186,8 @@ export default function ParentRegistrationScreen() {
       
       const registrationData = {
         email: userEmail || '',
-        firstName,
-        lastName,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         state,
         town,
         zipCode,
@@ -210,7 +213,7 @@ export default function ParentRegistrationScreen() {
       
       // Backend returns { success: true, message: "...", userId: "..." }
       if (!response || response.success !== true || !response.userId) {
-        const errorMsg = response?.error || response?.message || 'Failed to register parent';
+        const errorMsg = response?.error || response?.message || t('serverError');
         console.error('[Registration] Registration failed:', errorMsg);
         throw new Error(errorMsg);
       }
@@ -221,8 +224,8 @@ export default function ParentRegistrationScreen() {
         id: response.userId,
         userType: 'parent',
         email: userEmail || '',
-        firstName,
-        lastName,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         state,
         town,
         zipCode,
@@ -265,8 +268,8 @@ export default function ParentRegistrationScreen() {
         fullError: JSON.stringify(error, null, 2)
       });
       
-      let errorMessage = 'Failed to create profile. Please try again.';
-      let errorTitle = 'Registration Error';
+      let errorMessage = t('serverError');
+      let errorTitle = t('registrationError');
       
       if (error.message) {
         if (error.message.includes('Network request failed') || error.message.includes('Network error')) {
@@ -274,12 +277,15 @@ export default function ParentRegistrationScreen() {
           errorMessage = 'Cannot connect to the server. Please check your internet connection and try again.\n\nBackend URL: ' + BACKEND_URL;
         } else if (error.message.includes('404') || error.message.includes('not found')) {
           errorTitle = 'Server Error';
-          errorMessage = 'The registration endpoint was not found on the server.\n\nThis may mean:\n- The backend is not running\n- The backend URL is incorrect\n\nBackend URL: ' + BACKEND_URL + '\n\nError: ' + error.message;
+          errorMessage = 'The registration service is currently unavailable.\n\nBackend URL: ' + BACKEND_URL;
         } else if (error.message.includes('Failed to fetch') || error.message.includes('fetch')) {
           errorTitle = 'Network Error';
-          errorMessage = 'Unable to reach the server. Please check:\n- Your internet connection\n- The backend server is running\n\nBackend URL: ' + BACKEND_URL + '\n\nError: ' + error.message;
+          errorMessage = 'Unable to reach the server. Please check your internet connection.\n\nBackend URL: ' + BACKEND_URL;
+        } else if (error.message.includes('At least one')) {
+          // Specific validation error from backend
+          errorMessage = error.message;
         } else {
-          errorMessage = error.message + '\n\nBackend URL: ' + BACKEND_URL;
+          errorMessage = error.message;
         }
       }
       
@@ -468,7 +474,7 @@ export default function ParentRegistrationScreen() {
             />
           ))}
 
-          <Text style={[commonStyles.label, { marginTop: 16 }]}>{t('desiredDays')}</Text>
+          <Text style={[commonStyles.label, { marginTop: 16 }]}>{t('desiredDays')} *</Text>
           {(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as DayOfWeek[]).map((day) => (
             <CheckboxItem
               key={day}

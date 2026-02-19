@@ -100,6 +100,10 @@ export default function DoulaRegistrationScreen() {
       terms: { en: 'I accept the terms and conditions of platform use', es: 'Acepto los términos y condiciones de uso de la plataforma' },
       continue: { en: 'Continue to Payment', es: 'Continuar al Pago' },
       back: { en: 'Back', es: 'Atrás' },
+      missingFieldsTitle: { en: 'Missing Required Fields', es: 'Campos Requeridos Faltantes' },
+      missingFieldsMessage: { en: 'Please complete all required fields:', es: 'Por favor complete todos los campos requeridos:' },
+      registrationError: { en: 'Registration Error', es: 'Error de Registro' },
+      serverError: { en: 'Server error occurred. Please try again later.', es: 'Ocurrió un error del servidor. Por favor intente más tarde.' },
     };
     return translations[key]?.[language] || key;
   };
@@ -221,28 +225,26 @@ export default function DoulaRegistrationScreen() {
     console.log('[Registration] Timestamp:', new Date().toISOString());
     console.log('='.repeat(80));
     
-    if (!firstName || !lastName || !state || !town || !zipCode) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
-    }
+    const missingFields: string[] = [];
+    
+    if (!firstName.trim()) missingFields.push(t('firstName'));
+    if (!lastName.trim()) missingFields.push(t('lastName'));
+    if (!state) missingFields.push(t('state'));
+    if (!town) missingFields.push(t('town'));
+    if (!zipCode) missingFields.push(t('zipCode'));
+    if (paymentPreferences.length === 0) missingFields.push(t('paymentPref'));
+    if (spokenLanguages.length === 0) missingFields.push(t('languages'));
+    if (serviceCategories.length === 0) missingFields.push(t('serviceCategories'));
+    if (!profilePicture) missingFields.push(t('profilePic'));
+    if (!acceptedTerms) missingFields.push(t('terms'));
 
-    if (paymentPreferences.length === 0) {
-      Alert.alert('Error', 'Please select at least one payment preference');
-      return;
-    }
-
-    if (serviceCategories.length === 0) {
-      Alert.alert('Error', 'Please select at least one service category');
-      return;
-    }
-
-    if (!profilePicture) {
-      Alert.alert('Error', 'Please upload a profile picture');
-      return;
-    }
-
-    if (!acceptedTerms) {
-      Alert.alert('Error', 'Please accept the terms and conditions');
+    if (missingFields.length > 0) {
+      const fieldsList = missingFields.map((field, index) => `${index + 1}. ${field}`).join('\n');
+      Alert.alert(
+        t('missingFieldsTitle'),
+        `${t('missingFieldsMessage')}\n\n${fieldsList}`
+      );
+      console.log('[Registration] Missing required fields:', missingFields);
       return;
     }
 
@@ -268,8 +270,8 @@ export default function DoulaRegistrationScreen() {
       
       const registrationData = {
         email: userEmail || '',
-        firstName,
-        lastName,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         state,
         town,
         zipCode,
@@ -297,7 +299,7 @@ export default function DoulaRegistrationScreen() {
       
       // Backend returns { success: true, message: "...", userId: "..." }
       if (!response || response.success !== true || !response.userId) {
-        const errorMsg = response?.error || response?.message || 'Failed to register doula';
+        const errorMsg = response?.error || response?.message || t('serverError');
         console.error('[Registration] Registration failed:', errorMsg);
         throw new Error(errorMsg);
       }
@@ -308,8 +310,8 @@ export default function DoulaRegistrationScreen() {
         id: response.userId,
         userType: 'doula',
         email: userEmail || '',
-        firstName,
-        lastName,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         paymentPreferences,
         state,
         town,
@@ -357,8 +359,8 @@ export default function DoulaRegistrationScreen() {
         fullError: JSON.stringify(error, null, 2)
       });
       
-      let errorMessage = 'Failed to create profile. Please try again.';
-      let errorTitle = 'Registration Error';
+      let errorMessage = t('serverError');
+      let errorTitle = t('registrationError');
       
       if (error.message) {
         if (error.message.includes('Network request failed') || error.message.includes('Network error')) {
@@ -366,12 +368,15 @@ export default function DoulaRegistrationScreen() {
           errorMessage = 'Cannot connect to the server. Please check your internet connection and try again.\n\nBackend URL: ' + BACKEND_URL;
         } else if (error.message.includes('404') || error.message.includes('not found')) {
           errorTitle = 'Server Error';
-          errorMessage = 'The registration endpoint was not found on the server.\n\nThis may mean:\n- The backend is not running\n- The backend URL is incorrect\n\nBackend URL: ' + BACKEND_URL + '\n\nError: ' + error.message;
+          errorMessage = 'The registration service is currently unavailable.\n\nBackend URL: ' + BACKEND_URL;
         } else if (error.message.includes('Failed to fetch') || error.message.includes('fetch')) {
           errorTitle = 'Network Error';
-          errorMessage = 'Unable to reach the server. Please check:\n- Your internet connection\n- The backend server is running\n\nBackend URL: ' + BACKEND_URL + '\n\nError: ' + error.message;
+          errorMessage = 'Unable to reach the server. Please check your internet connection.\n\nBackend URL: ' + BACKEND_URL;
+        } else if (error.message.includes('At least one')) {
+          // Specific validation error from backend
+          errorMessage = error.message;
         } else {
-          errorMessage = error.message + '\n\nBackend URL: ' + BACKEND_URL;
+          errorMessage = error.message;
         }
       }
       
@@ -539,7 +544,7 @@ export default function DoulaRegistrationScreen() {
         </View>
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>{t('languages')}</Text>
+          <Text style={commonStyles.subtitle}>{t('languages')} *</Text>
           {(['English', 'Spanish', 'Chinese', 'Tagalog', 'Arabic', 'Hebrew', 'Vietnamese'] as SpokenLanguage[]).map((lang) => (
             <CheckboxItem
               key={lang}
