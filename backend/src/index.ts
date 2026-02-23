@@ -9,6 +9,7 @@ import * as contractRoutes from './routes/contracts.js';
 import * as commentRoutes from './routes/comments.js';
 import * as paymentRoutes from './routes/payments.js';
 import * as healthRoutes from './routes/health.js';
+import * as accountDeletionRoutes from './routes/account-deletion.js';
 import { initializePayPal, getPayPalStatus } from './services/paypal-service.js';
 
 // Create application with schema for full database type support
@@ -43,6 +44,7 @@ matchingRoutes.register(app, app.fastify);
 contractRoutes.register(app, app.fastify);
 commentRoutes.register(app, app.fastify);
 paymentRoutes.register(app, app.fastify);
+accountDeletionRoutes.register(app, app.fastify);
 
 await app.run();
 app.logger.info('Application running');
