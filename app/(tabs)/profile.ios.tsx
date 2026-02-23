@@ -7,7 +7,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Alert,
   Image,
   ActivityIndicator,
 } from 'react-native';
@@ -18,6 +17,7 @@ import { IconSymbol } from '@/components/IconSymbol';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { DoulaProfile, ParentProfile } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ConfirmModal } from '@/components/ConfirmModal';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -25,6 +25,12 @@ export default function ProfileScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch subscription status on mount
   useEffect(() => {
@@ -120,35 +126,67 @@ export default function ProfileScreen() {
       }
       
       setIsEditing(false);
-      Alert.alert('Success', 'Profile updated successfully');
     } catch (error: any) {
       console.error('[Profile] Error updating profile:', error);
-      Alert.alert('Error', error.message || 'Failed to update profile. Please try again.');
+      setErrorMessage(error.message || 'Failed to update profile. Please try again.');
+      setShowErrorModal(true);
     }
   };
 
-  const handleLogout = async () => {
-    console.log('Logging out');
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            // Clear user session from storage
-            await AsyncStorage.removeItem('doula_connect_user_id');
-            await AsyncStorage.removeItem('doula_connect_user_type');
-            console.log('[Profile] User session cleared from storage');
-            
-            setUserProfile(null);
-            router.replace('/welcome');
-          },
-        },
-      ]
-    );
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = async () => {
+    try {
+      // Clear user session from storage
+      await AsyncStorage.removeItem('doula_connect_user_id');
+      await AsyncStorage.removeItem('doula_connect_user_type');
+      console.log('[Profile] User session cleared from storage');
+    } finally {
+      setShowLogoutModal(false);
+      setUserProfile(null);
+      router.replace('/welcome');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    console.log('[Profile] User confirmed account deletion');
+    setIsDeleting(true);
+
+    try {
+      const { apiDelete } = await import('@/utils/api');
+      
+      console.log('[Profile] Deleting account for user:', userProfile.id);
+      // Use the correct API endpoint: /api/delete-account/{userId}
+      const response = await apiDelete(`/api/delete-account/${userProfile.id}`);
+      console.log('[Profile] Delete response:', response);
+
+      if (response.success) {
+        console.log('[Profile] Account deleted successfully');
+        
+        // Clear all local data
+        await AsyncStorage.removeItem('doula_connect_user_id');
+        await AsyncStorage.removeItem('doula_connect_user_type');
+        console.log('[Profile] Local storage cleared');
+        
+        // Clear user profile from context
+        setUserProfile(null);
+        
+        // Close delete modal and show success modal
+        setShowDeleteModal(false);
+        setShowSuccessModal(true);
+      } else {
+        throw new Error(response.error || 'Failed to delete account');
+      }
+    } catch (error: any) {
+      console.error('[Profile] Error deleting account:', error);
+      setShowDeleteModal(false);
+      setErrorMessage(error.message || 'Failed to delete account. Please try again.');
+      setShowErrorModal(true);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const renderParentProfile = (profile: ParentProfile) => {
@@ -513,7 +551,76 @@ export default function ProfileScreen() {
         <TouchableOpacity style={[commonStyles.outlineButton, { borderColor: colors.error }]} onPress={handleLogout}>
           <Text style={[commonStyles.outlineButtonText, { color: colors.error }]}>Logout</Text>
         </TouchableOpacity>
+
+        <View style={styles.dangerZone}>
+          <Text style={styles.dangerZoneTitle}>Danger Zone</Text>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => setShowDeleteModal(true)}
+          >
+            <IconSymbol
+              ios_icon_name="trash"
+              android_material_icon_name="delete"
+              size={20}
+              color={colors.error}
+            />
+            <Text style={styles.deleteButtonText}>Delete Account</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
+
+      {/* Delete Account Confirmation Modal */}
+      <ConfirmModal
+        visible={showDeleteModal}
+        title="Delete Account"
+        message="Are you sure you want to delete your account? This action cannot be undone. All your data, including profile information, contracts, and subscription will be permanently deleted."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setShowDeleteModal(false)}
+        isLoading={isDeleting}
+        destructive
+      />
+
+      {/* Logout Confirmation Modal */}
+      <ConfirmModal
+        visible={showLogoutModal}
+        title="Logout"
+        message="Are you sure you want to logout?"
+        confirmText="Logout"
+        cancelText="Cancel"
+        onConfirm={confirmLogout}
+        onCancel={() => setShowLogoutModal(false)}
+        destructive
+      />
+
+      {/* Account Deleted Success Modal */}
+      <ConfirmModal
+        visible={showSuccessModal}
+        title="Account Deleted"
+        message="Your account has been permanently deleted."
+        confirmText="OK"
+        cancelText=""
+        onConfirm={() => {
+          setShowSuccessModal(false);
+          router.replace('/welcome');
+        }}
+        onCancel={() => {
+          setShowSuccessModal(false);
+          router.replace('/welcome');
+        }}
+      />
+
+      {/* Error Modal */}
+      <ConfirmModal
+        visible={showErrorModal}
+        title="Error"
+        message={errorMessage}
+        confirmText="OK"
+        cancelText=""
+        onConfirm={() => setShowErrorModal(false)}
+        onCancel={() => setShowErrorModal(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -648,5 +755,35 @@ const styles = StyleSheet.create({
   refereeEmail: {
     fontSize: 13,
     color: colors.textSecondary,
+  },
+  dangerZone: {
+    marginTop: 32,
+    padding: 20,
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.3)',
+  },
+  dangerZoneTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.error,
+    marginBottom: 12,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 14,
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.error,
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.error,
+    marginLeft: 8,
   },
 });
