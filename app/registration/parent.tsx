@@ -156,6 +156,9 @@ export default function ParentRegistrationScreen() {
     if (!zipCode) missingFields.push(t('zipCode'));
     if (serviceCategories.length === 0) missingFields.push(t('serviceCategory'));
     if (financingTypes.length === 0) missingFields.push(t('financingType'));
+    if (!servicePeriodStart) missingFields.push(t('startDate'));
+    if (!servicePeriodEnd) missingFields.push(t('endDate'));
+    if (preferredLanguages.length === 0) missingFields.push(t('preferredLang'));
     if (desiredDays.length === 0) missingFields.push(t('desiredDays'));
     if (!desiredStartTime) missingFields.push(t('startTime'));
     if (!desiredEndTime) missingFields.push(t('endTime'));
@@ -441,7 +444,7 @@ export default function ParentRegistrationScreen() {
         <View style={commonStyles.card}>
           <Text style={commonStyles.subtitle}>{t('servicePeriod')}</Text>
           
-          <Text style={commonStyles.label}>{t('startDate')}</Text>
+          <Text style={commonStyles.label}>{t('startDate')} *</Text>
           <TouchableOpacity
             style={commonStyles.input}
             onPress={() => setShowStartDatePicker(true)}
@@ -465,7 +468,7 @@ export default function ParentRegistrationScreen() {
             />
           )}
 
-          <Text style={commonStyles.label}>{t('endDate')}</Text>
+          <Text style={commonStyles.label}>{t('endDate')} *</Text>
           <TouchableOpacity
             style={commonStyles.input}
             onPress={() => setShowEndDatePicker(true)}
@@ -493,7 +496,7 @@ export default function ParentRegistrationScreen() {
         <View style={commonStyles.card}>
           <Text style={commonStyles.subtitle}>{t('preferences')}</Text>
           
-          <Text style={commonStyles.label}>{t('preferredLang')}</Text>
+          <Text style={commonStyles.label}>{t('preferredLang')} *</Text>
           {(['English', 'Spanish', 'Chinese', 'Tagalog', 'Arabic', 'Hebrew', 'Vietnamese'] as SpokenLanguage[]).map((lang) => (
             <CheckboxItem
               key={lang}
