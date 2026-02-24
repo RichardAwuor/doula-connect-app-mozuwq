@@ -7,8 +7,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { colors } from '@/styles/commonStyles';
+import { IconSymbol } from './IconSymbol';
 
 interface ConfirmModalProps {
   visible: boolean;
@@ -80,6 +82,63 @@ export function ConfirmModal({
   );
 }
 
+interface ErrorModalProps {
+  visible: boolean;
+  title: string;
+  message: string;
+  details?: string;
+  onClose: () => void;
+}
+
+export function ErrorModal({
+  visible,
+  title,
+  message,
+  details,
+  onClose,
+}: ErrorModalProps) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.overlay}>
+        <View style={styles.modalContainer}>
+          <View style={styles.errorIconContainer}>
+            <IconSymbol
+              ios_icon_name="exclamationmark.triangle.fill"
+              android_material_icon_name="error"
+              size={48}
+              color={colors.error}
+            />
+          </View>
+          
+          <Text style={styles.title}>{title}</Text>
+          
+          <ScrollView style={styles.messageScrollView} showsVerticalScrollIndicator={false}>
+            <Text style={styles.message}>{message}</Text>
+            {details && (
+              <View style={styles.detailsContainer}>
+                <Text style={styles.detailsLabel}>Technical Details:</Text>
+                <Text style={styles.detailsText}>{details}</Text>
+              </View>
+            )}
+          </ScrollView>
+
+          <TouchableOpacity
+            style={[styles.button, styles.confirmButton, styles.fullWidthButton]}
+            onPress={onClose}
+          >
+            <Text style={styles.confirmButtonText}>OK</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
@@ -94,11 +153,16 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     maxWidth: 400,
+    maxHeight: '80%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 5,
+  },
+  errorIconContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
   },
   title: {
     fontSize: 20,
@@ -113,6 +177,29 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: 'center',
     lineHeight: 22,
+  },
+  messageScrollView: {
+    maxHeight: 300,
+    marginBottom: 24,
+  },
+  detailsContainer: {
+    backgroundColor: colors.secondary,
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+  },
+  detailsLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  detailsText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontFamily: 'monospace',
+    lineHeight: 18,
   },
   buttonContainer: {
     flexDirection: 'row',

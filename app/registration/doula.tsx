@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Alert,
   Image,
   Platform,
 } from 'react-native';
@@ -17,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useUser } from '@/contexts/UserContext';
 import { CheckboxItem } from '@/components/CheckboxItem';
+import { ErrorModal } from '@/components/ConfirmModal';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import DropdownPicker from '@/components/DropdownPicker';
@@ -53,6 +53,10 @@ export default function DoulaRegistrationScreen() {
     { firstName: '', lastName: '', email: '' },
   ]);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorTitle, setErrorTitle] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [errorDetails, setErrorDetails] = useState('');
 
   const t = (key: string) => {
     const translations: Record<string, Record<string, string>> = {
@@ -240,10 +244,10 @@ export default function DoulaRegistrationScreen() {
 
     if (missingFields.length > 0) {
       const fieldsList = missingFields.map((field, index) => `${index + 1}. ${field}`).join('\n');
-      Alert.alert(
-        t('missingFieldsTitle'),
-        `${t('missingFieldsMessage')}\n\n${fieldsList}`
-      );
+      setErrorTitle(t('missingFieldsTitle'));
+      setErrorMessage(`${t('missingFieldsMessage')}\n\n${fieldsList}`);
+      setErrorDetails('');
+      setShowErrorModal(true);
       console.log('[Registration] Missing required fields:', missingFields);
       return;
     }
@@ -256,10 +260,10 @@ export default function DoulaRegistrationScreen() {
       
       if (!isBackendConfigured()) {
         console.error('[Registration] Backend URL not configured');
-        Alert.alert(
-          'Configuration Error',
-          'The app backend is not configured. Please contact support.\n\nBackend URL: ' + (BACKEND_URL || 'NOT SET')
-        );
+        setErrorTitle('Configuration Error');
+        setErrorMessage('The app is not properly configured. Please contact support for assistance.');
+        setErrorDetails(`Backend URL: ${BACKEND_URL || 'NOT SET'}`);
+        setShowErrorModal(true);
         return;
       }
       
@@ -348,7 +352,10 @@ export default function DoulaRegistrationScreen() {
         console.log('[Registration] Navigation command sent successfully');
       } catch (navError: any) {
         console.error('[Registration] Navigation error:', navError);
-        Alert.alert('Navigation Error', 'Failed to navigate to payment screen: ' + navError.message);
+        setErrorTitle('Navigation Error');
+        setErrorMessage('Registration was successful, but we encountered an issue navigating to the payment screen. Please restart the app.');
+        setErrorDetails(navError.message);
+        setShowErrorModal(true);
       }
     } catch (error: any) {
       console.error('[Registration] Error creating doula profile:', error);
@@ -359,28 +366,50 @@ export default function DoulaRegistrationScreen() {
         fullError: JSON.stringify(error, null, 2)
       });
       
-      let errorMessage = t('serverError');
-      let errorTitle = t('registrationError');
+      let displayTitle = t('registrationError');
+      let displayMessage = t('serverError');
+      let displayDetails = '';
       
       if (error.message) {
         if (error.message.includes('Network request failed') || error.message.includes('Network error')) {
-          errorTitle = 'Connection Error';
-          errorMessage = 'Cannot connect to the server. Please check your internet connection and try again.\n\nBackend URL: ' + BACKEND_URL;
+          displayTitle = 'Connection Error';
+          displayMessage = 'Cannot connect to the server. Please check your internet connection and try again.';
+          displayDetails = `Backend URL: ${BACKEND_URL}\nError: ${error.message}`;
         } else if (error.message.includes('404') || error.message.includes('not found')) {
-          errorTitle = 'Server Error';
-          errorMessage = 'The registration service is currently unavailable.\n\nBackend URL: ' + BACKEND_URL;
+          displayTitle = 'Service Unavailable';
+          displayMessage = 'The registration service is currently unavailable. Please try again in a few moments.';
+          displayDetails = `Backend URL: ${BACKEND_URL}\nError: ${error.message}`;
         } else if (error.message.includes('Failed to fetch') || error.message.includes('fetch')) {
-          errorTitle = 'Network Error';
-          errorMessage = 'Unable to reach the server. Please check your internet connection.\n\nBackend URL: ' + BACKEND_URL;
+          displayTitle = 'Network Error';
+          displayMessage = 'Unable to reach the server. Please check your internet connection and try again.';
+          displayDetails = `Backend URL: ${BACKEND_URL}\nError: ${error.message}`;
+        } else if (error.message.includes('timeout') || error.message.includes('timed out')) {
+          displayTitle = 'Request Timeout';
+          displayMessage = 'The server is taking too long to respond. Please check your internet connection and try again.';
+          displayDetails = `Backend URL: ${BACKEND_URL}\nError: ${error.message}`;
         } else if (error.message.includes('At least one')) {
           // Specific validation error from backend
-          errorMessage = error.message;
+          displayTitle = 'Validation Error';
+          displayMessage = error.message;
+          displayDetails = '';
+        } else if (error.message.includes('already exists') || error.message.includes('duplicate')) {
+          displayTitle = 'Account Already Exists';
+          displayMessage = 'An account with this email already exists. Please use a different email or try logging in.';
+          displayDetails = error.message;
         } else {
-          errorMessage = error.message;
+          // Generic error with full details
+          displayTitle = 'Registration Error';
+          displayMessage = error.message || 'An unexpected error occurred during registration. Please try again.';
+          displayDetails = `Backend URL: ${BACKEND_URL}\nError Type: ${error.name || 'Unknown'}\nStack: ${error.stack || 'N/A'}`;
         }
+      } else {
+        displayDetails = `Backend URL: ${BACKEND_URL}\nError: ${JSON.stringify(error, null, 2)}`;
       }
       
-      Alert.alert(errorTitle, errorMessage);
+      setErrorTitle(displayTitle);
+      setErrorMessage(displayMessage);
+      setErrorDetails(displayDetails);
+      setShowErrorModal(true);
     }
   };
 
@@ -698,6 +727,14 @@ export default function DoulaRegistrationScreen() {
           <Text style={commonStyles.buttonText}>{t('continue')}</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <ErrorModal
+        visible={showErrorModal}
+        title={errorTitle}
+        message={errorMessage}
+        details={errorDetails}
+        onClose={() => setShowErrorModal(false)}
+      />
     </SafeAreaView>
   );
 }
