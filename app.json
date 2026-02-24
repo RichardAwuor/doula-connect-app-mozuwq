@@ -20,7 +20,10 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "icon": "./assets/images/513e13a3-c9f9-4145-b2f8-d31f632a5ece.png"
+      "icon": "./assets/images/513e13a3-c9f9-4145-b2f8-d31f632a5ece.png",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
