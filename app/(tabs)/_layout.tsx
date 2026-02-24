@@ -11,16 +11,16 @@ export default function TabLayout() {
         <FloatingTabBar
           tabs={[
             {
+              name: 'connect',
               route: '/(tabs)/connect',
               label: 'Connect',
-              ios_icon_name: 'heart.fill',
-              android_material_icon_name: 'favorite',
+              icon: 'favorite',
             },
             {
+              name: 'profile',
               route: '/(tabs)/profile',
               label: 'Profile',
-              ios_icon_name: 'person.fill',
-              android_material_icon_name: 'person',
+              icon: 'person',
             },
           ]}
         />
