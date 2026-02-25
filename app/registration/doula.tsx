@@ -239,6 +239,7 @@ export default function DoulaRegistrationScreen() {
     if (paymentPreferences.length === 0) missingFields.push(t('paymentPref'));
     if (spokenLanguages.length === 0) missingFields.push(t('languages'));
     if (serviceCategories.length === 0) missingFields.push(t('serviceCategories'));
+    if (certifications.length === 0) missingFields.push(t('certifications'));
     if (!profilePicture) missingFields.push(t('profilePic'));
     if (!acceptedTerms) missingFields.push(t('terms'));
 
@@ -585,7 +586,7 @@ export default function DoulaRegistrationScreen() {
         </View>
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>{t('certifications')}</Text>
+          <Text style={commonStyles.subtitle}>{t('certifications')} *</Text>
           <CheckboxItem
             label={t('doulaCert')}
             checked={certifications.includes('doula_certification')}
