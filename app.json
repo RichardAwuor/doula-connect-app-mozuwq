@@ -1,13 +1,14 @@
+
 {
   "expo": {
     "name": "Doula Connect",
-    "slug": "Doula Connect",
-    "version": "1.0.21",
+    "slug": "doula-connect",
+    "version": "1.0.22",
     "orientation": "portrait",
     "icon": "./assets/images/513e13a3-c9f9-4145-b2f8-d31f632a5ece.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "scheme": "Doula Connect",
+    "scheme": "doulaconnect",
     "splash": {
       "image": "./assets/images/2c7e0498-b523-4877-88ba-eae9afdb3794.png",
       "resizeMode": "contain",
@@ -15,7 +16,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.doulaconnect.app",
+      "bundleIdentifier": "com.richardawuor.doulaconnect",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -31,7 +32,7 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.simphoni.doulaconnect",
-      "versionCode": 21,
+      "versionCode": 22,
       "icon": "./assets/images/513e13a3-c9f9-4145-b2f8-d31f632a5ece.png"
     },
     "web": {
