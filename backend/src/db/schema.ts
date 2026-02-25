@@ -133,6 +133,11 @@ export const subscriptions = pgTable('subscriptions', {
   paypalCustomerId: text('paypal_customer_id'),
   paypalOrderId: text('paypal_order_id'),
   paypalSubscriptionId: text('paypal_subscription_id'),
+  stripeCustomerId: text('stripe_customer_id'),
+  stripeSubscriptionId: text('stripe_subscription_id'),
+  appleTransactionId: text('apple_transaction_id'),
+  googlePurchaseToken: text('google_purchase_token'),
+  platform: text('platform'), // 'ios', 'android', 'paypal', 'stripe'
   status: text('status').notNull(), // 'active', 'cancelled', 'expired'
   planType: text('plan_type').notNull(), // 'annual', 'monthly'
   amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
@@ -143,4 +148,5 @@ export const subscriptions = pgTable('subscriptions', {
 }, (table) => [
   index('subscription_user_id_idx').on(table.userId),
   index('subscription_status_idx').on(table.status),
+  index('subscription_platform_idx').on(table.platform),
 ]);
