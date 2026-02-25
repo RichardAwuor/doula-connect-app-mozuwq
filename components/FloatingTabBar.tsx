@@ -117,7 +117,7 @@ export default function FloatingTabBar({
     };
   });
 
-  // Dynamic styles based on theme - Active indicator and icon color set to magenta
+  // Dynamic styles based on theme - Active indicator and icon color set to pink
   const dynamicStyles = {
     blurContainer: {
       ...styles.blurContainer,
@@ -147,7 +147,7 @@ export default function FloatingTabBar({
     },
     indicator: {
       ...styles.indicator,
-      backgroundColor: colors.primary, // Magenta color for active tab indicator
+      backgroundColor: colors.primary, // Pink color (#FF69B4) for active tab indicator
       width: `${tabWidthPercent}%` as `${number}%`,
     },
   };
@@ -170,6 +170,8 @@ export default function FloatingTabBar({
           <View style={styles.tabsContainer}>
             {tabs.map((tab, index) => {
               const isActive = activeTabIndex === index;
+              const iconColor = isActive ? colors.primary : (theme.dark ? '#98989D' : '#000000');
+              const labelColor = isActive ? colors.primary : (theme.dark ? '#98989D' : '#8E8E93');
 
               return (
                 <React.Fragment key={index}>
@@ -183,13 +185,12 @@ export default function FloatingTabBar({
                       android_material_icon_name={tab.icon}
                       ios_icon_name={tab.icon}
                       size={24}
-                      color={isActive ? colors.primary : (theme.dark ? '#98989D' : '#000000')}
+                      color={iconColor}
                     />
                     <Text
                       style={[
                         styles.tabLabel,
-                        { color: theme.dark ? '#98989D' : '#8E8E93' },
-                        isActive && { color: colors.primary, fontWeight: '600' },
+                        { color: labelColor, fontWeight: isActive ? '600' : '500' },
                       ]}
                     >
                       {tab.label}
@@ -252,7 +253,6 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontSize: 9,
-    fontWeight: '500',
     marginTop: 2,
   },
 });
