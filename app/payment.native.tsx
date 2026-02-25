@@ -78,8 +78,8 @@ export default function PaymentScreen() {
         setProducts(availableProducts);
       }
     } catch (error) {
-      console.error('[Payment Native] IAP initialization error:', error);
-      // Don't show error modal on initialization failure - just disable IAP
+      console.warn('[Payment Native] IAP initialization failed:', error);
+      // Silently disable IAP option - don't show error modal
       setIapAvailable(false);
     }
   };
@@ -278,15 +278,14 @@ export default function PaymentScreen() {
   };
 
   const handlePaymentError = (error: any) => {
-    let userMessage = 'An unexpected error occurred during payment.';
-    let technicalDetails = JSON.stringify(error);
-
+    // Check if user cancelled - don't show error modal for cancellations
     if (error.code === 'E_USER_CANCELLED') {
-      userMessage = 'Payment was cancelled.';
-      // Don't show error modal for user cancellation
       console.log('[Payment Native] User cancelled payment');
       return;
     }
+
+    let userMessage = 'An unexpected error occurred during payment.';
+    let technicalDetails = JSON.stringify(error);
 
     if (error.response) {
       if (error.response.status === 503) {
@@ -452,11 +451,11 @@ export default function PaymentScreen() {
       </ScrollView>
 
       <ErrorModal
-        isVisible={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
+        visible={showErrorModal}
         title="Payment Failed"
         message={errorMessage}
-        technicalDetails={errorDetails}
+        details={errorDetails}
+        onClose={() => setShowErrorModal(false)}
       />
     </SafeAreaView>
   );

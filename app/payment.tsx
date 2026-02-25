@@ -261,11 +261,11 @@ export default function PaymentScreen() {
       </ScrollView>
 
       <ErrorModal
-        isVisible={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
+        visible={showErrorModal}
         title="Payment Failed"
         message={errorMessage}
-        technicalDetails={errorDetails}
+        details={errorDetails}
+        onClose={() => setShowErrorModal(false)}
       />
     </SafeAreaView>
   );
