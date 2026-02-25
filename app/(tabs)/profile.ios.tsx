@@ -40,12 +40,14 @@ export default function ProfileScreen() {
       try {
         console.log('[Profile] Fetching subscription status for user:', userProfile.id);
         const { apiGet } = await import('@/utils/api');
-        const subscription = await apiGet(`/subscriptions/${userProfile.id}`);
-        console.log('[Profile] Subscription status:', subscription);
-        setSubscriptionStatus(subscription);
+        // Use the new IAP subscription status endpoint which returns { subscription: object }
+        const response = await apiGet(`/api/payments/subscription-status/${userProfile.id}`);
+        console.log('[Profile] Subscription status response:', response);
+        // The new endpoint wraps the subscription in a { subscription } object
+        setSubscriptionStatus(response.subscription || null);
       } catch (error: any) {
         console.error('[Profile] Error fetching subscription:', error);
-        // If subscription not found, it means user hasn't subscribed yet
+        // If subscription not found (404), it means user hasn't subscribed yet
         setSubscriptionStatus(null);
       } finally {
         setLoadingSubscription(false);
@@ -518,12 +520,18 @@ export default function ProfileScreen() {
                   </Text>
                 </View>
               </View>
-              {subscriptionStatus.currentPeriodEnd && (
+              {subscriptionStatus.platform && (
                 <Text style={styles.subscriptionNote}>
-                  Renews on: {new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString()}
+                  Platform: {subscriptionStatus.platform === 'ios' ? 'App Store' : subscriptionStatus.platform === 'android' ? 'Google Play' : subscriptionStatus.platform === 'paypal' ? 'PayPal' : 'Stripe'}
+                  {subscriptionStatus.autoRenew !== undefined ? (subscriptionStatus.autoRenew ? ' · Auto-renews' : ' · Cancelled') : ''}
                 </Text>
               )}
-              <TouchableOpacity style={commonStyles.outlineButton}>
+              {subscriptionStatus.currentPeriodEnd && (
+                <Text style={styles.subscriptionNote}>
+                  {subscriptionStatus.autoRenew === false ? 'Expires on' : 'Renews on'}: {new Date(subscriptionStatus.currentPeriodEnd).toLocaleDateString()}
+                </Text>
+              )}
+              <TouchableOpacity style={commonStyles.outlineButton} onPress={() => router.push('/payment')}>
                 <Text style={commonStyles.outlineButtonText}>Manage Subscription</Text>
               </TouchableOpacity>
             </>

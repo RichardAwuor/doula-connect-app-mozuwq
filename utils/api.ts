@@ -56,6 +56,11 @@
  * - GET /subscriptions/{userId}
  * - PUT /subscriptions/{userId}
  * 
+ * In-App Purchases (iOS/Android):
+ * - POST /api/payments/verify-iap
+ * - POST /api/payments/restore-purchases
+ * - GET /api/payments/subscription-status/{userId}
+ * 
  * ============================================================================
  */
 
