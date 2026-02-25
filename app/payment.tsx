@@ -90,6 +90,10 @@ export default function PaymentScreen() {
         // Open PayPal approval URL in browser
         await Linking.openURL(response.approvalUrl);
         
+        // Reset processing state after opening URL
+        setProcessing(false);
+        setSelectedMethod(null);
+        
         // Note: User will be redirected back to the app after payment
         // The webhook will handle subscription activation
       } else {
@@ -98,7 +102,6 @@ export default function PaymentScreen() {
     } catch (error: any) {
       console.error('[Payment] PayPal payment error:', error);
       handlePaymentError(error);
-    } finally {
       setProcessing(false);
       setSelectedMethod(null);
     }

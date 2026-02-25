@@ -79,6 +79,7 @@ export default function PaymentScreen() {
       }
     } catch (error) {
       console.error('[Payment Native] IAP initialization error:', error);
+      // Don't show error modal on initialization failure - just disable IAP
       setIapAvailable(false);
     }
   };
@@ -218,13 +219,16 @@ export default function PaymentScreen() {
       if (response.success && response.approvalUrl) {
         console.log('[Payment Native] Opening PayPal approval URL');
         await Linking.openURL(response.approvalUrl);
+        
+        // Reset processing state after opening URL
+        setProcessing(false);
+        setSelectedMethod(null);
       } else {
         throw new Error('Failed to create PayPal order');
       }
     } catch (error: any) {
       console.error('[Payment Native] PayPal payment error:', error);
       handlePaymentError(error);
-    } finally {
       setProcessing(false);
       setSelectedMethod(null);
     }
@@ -279,8 +283,8 @@ export default function PaymentScreen() {
 
     if (error.code === 'E_USER_CANCELLED') {
       userMessage = 'Payment was cancelled.';
-      setProcessing(false);
-      setSelectedMethod(null);
+      // Don't show error modal for user cancellation
+      console.log('[Payment Native] User cancelled payment');
       return;
     }
 
