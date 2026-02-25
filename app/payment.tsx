@@ -16,7 +16,7 @@ import { useUser } from '@/contexts/UserContext';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { ErrorModal } from '@/components/ConfirmModal';
-import { apiPost } from '@/utils/api';
+import { apiPost, apiGet } from '@/utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function PaymentScreen() {
@@ -76,6 +76,30 @@ export default function PaymentScreen() {
     setSelectedMethod('paypal');
 
     try {
+      // Pre-flight check: verify PayPal service is available
+      console.log('[Payment] Checking PayPal service availability...');
+      try {
+        const statusResponse = await apiGet('/status/paypal');
+        console.log('[Payment] PayPal status:', statusResponse);
+        if (!statusResponse.available) {
+          throw new Error(
+            statusResponse.error ||
+            'Payment processing is currently unavailable. PayPal credentials not configured.'
+          );
+        }
+      } catch (statusError: any) {
+        // If status check itself fails with a PayPal-related error, surface it
+        if (
+          statusError.message?.includes('Payment processing') ||
+          statusError.message?.includes('PayPal') ||
+          statusError.message?.includes('unavailable')
+        ) {
+          throw statusError;
+        }
+        // Otherwise, proceed anyway (status endpoint might not be accessible)
+        console.warn('[Payment] Could not check PayPal status, proceeding anyway:', statusError.message);
+      }
+
       const response = await apiPost('/payments/create-session', {
         userId: userProfile.id,
         userType: userProfile.userType,
@@ -97,7 +121,7 @@ export default function PaymentScreen() {
         // Note: User will be redirected back to the app after payment
         // The webhook will handle subscription activation
       } else {
-        throw new Error('Failed to create PayPal order');
+        throw new Error('Failed to create PayPal order - no approval URL returned');
       }
     } catch (error: any) {
       console.error('[Payment] PayPal payment error:', error);
@@ -115,22 +139,45 @@ export default function PaymentScreen() {
   };
 
   const handlePaymentError = (error: any) => {
+    console.error('[Payment] Payment error details:', error);
+    
     let userMessage = 'An unexpected error occurred during payment.';
-    let technicalDetails = JSON.stringify(error);
+    let technicalDetails = '';
 
-    if (error.response) {
-      if (error.response.status === 503) {
-        userMessage = 'Payment service is temporarily unavailable. Please try again later or contact support.';
-      } else if (error.response.status === 400 && error.response.data?.error) {
-        userMessage = error.response.data.error;
-      } else {
-        userMessage = 'Payment processing failed. Please try again.';
-      }
-      technicalDetails = JSON.stringify(error.response.data || error.response.statusText);
-    } else if (error.request) {
+    const errorMsg = error?.message || '';
+
+    // Check for PayPal service unavailable (503) - message comes from apiPost as thrown Error
+    if (
+      errorMsg.includes('Payment processing is currently unavailable') ||
+      errorMsg.includes('PayPal credentials not configured') ||
+      errorMsg.includes('Service Unavailable') ||
+      errorMsg.includes('503')
+    ) {
+      userMessage = 'Payment processing is currently unavailable. The PayPal service is not configured on the server. Please contact support or try again later.';
+      technicalDetails = 'Backend error: PayPal credentials (PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET) are not set in the server environment.';
+    } else if (
+      errorMsg.includes('Missing required fields') ||
+      errorMsg.includes('must choose')
+    ) {
+      userMessage = errorMsg;
+      technicalDetails = 'Request validation failed.';
+    } else if (
+      errorMsg.includes('Failed to create payment order') ||
+      errorMsg.includes('500')
+    ) {
+      userMessage = 'Server error occurred while processing payment. Please try again later.';
+      technicalDetails = errorMsg;
+    } else if (
+      errorMsg.includes('Network request failed') ||
+      errorMsg.includes('Unable to connect')
+    ) {
       userMessage = 'Cannot connect to the payment server. Please check your internet connection.';
+      technicalDetails = errorMsg;
+    } else if (errorMsg) {
+      userMessage = errorMsg;
+      technicalDetails = error.stack || error.toString();
     } else {
-      userMessage = error.message || userMessage;
+      technicalDetails = JSON.stringify(error, null, 2);
     }
 
     setErrorMessage(userMessage);
