@@ -8,6 +8,8 @@ import * as checkoutNodeJssdk from '@paypal/checkout-server-sdk';
 let paypalClient: checkoutNodeJssdk.core.PayPalHttpClient | null = null;
 let paypalInitialized = false;
 let paypalError: string | null = null;
+let paypalEnvironment: 'sandbox' | 'production' | null = null;
+let paypalClientIdPrefix: string | null = null;
 
 /**
  * Mask sensitive credentials for logging - shows first 4 and last 4 characters
@@ -34,12 +36,21 @@ export function initializePayPal(logger?: any): { success: boolean; error?: stri
   const clientId = process.env.PAYPAL_CLIENT_ID;
   const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
 
-  // Validate credentials
-  if (!clientId || !clientSecret) {
-    paypalError = 'PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET environment variables are required. Payment processing is disabled.';
+  // Validate credentials exist and are not empty
+  if (!clientId || clientId.trim() === '') {
+    paypalError = 'PAYPAL_CLIENT_ID environment variable is required. Payment processing is disabled.';
     paypalInitialized = true;
     if (logger) {
-      logger.error('PayPal initialization failed: Credentials not configured');
+      logger.error('PayPal initialization failed: PAYPAL_CLIENT_ID not configured');
+    }
+    return { success: false, error: paypalError };
+  }
+
+  if (!clientSecret || clientSecret.trim() === '') {
+    paypalError = 'PAYPAL_CLIENT_SECRET environment variable is required. Payment processing is disabled.';
+    paypalInitialized = true;
+    if (logger) {
+      logger.error('PayPal initialization failed: PAYPAL_CLIENT_SECRET not configured');
     }
     return { success: false, error: paypalError };
   }
@@ -54,6 +65,8 @@ export function initializePayPal(logger?: any): { success: boolean; error?: stri
     // Initialize PayPal client
     paypalClient = new checkoutNodeJssdk.core.PayPalHttpClient(environment);
     paypalInitialized = true;
+    paypalEnvironment = mode;
+    paypalClientIdPrefix = clientId.substring(0, 10);
 
     if (logger) {
       const maskedClientId = maskCredential(clientId);
@@ -63,6 +76,7 @@ export function initializePayPal(logger?: any): { success: boolean; error?: stri
           environment: mode,
           clientId: maskedClientId,
           clientSecret: maskedClientSecret,
+          clientIdPrefix: paypalClientIdPrefix,
         },
         `PayPal client successfully initialized in ${mode} mode`
       );
@@ -105,10 +119,18 @@ export function isPayPalAvailable(): boolean {
 /**
  * Get PayPal initialization status
  */
-export function getPayPalStatus(): { initialized: boolean; available: boolean; error?: string } {
+export function getPayPalStatus(): {
+  initialized: boolean;
+  available: boolean;
+  environment?: 'sandbox' | 'production';
+  clientIdPrefix?: string;
+  error?: string;
+} {
   return {
     initialized: paypalInitialized,
     available: paypalClient !== null,
+    environment: paypalEnvironment || undefined,
+    clientIdPrefix: paypalClientIdPrefix || undefined,
     error: paypalError || undefined,
   };
 }

@@ -72,6 +72,8 @@ export function register(app: App, fastify: FastifyInstance) {
           properties: {
             initialized: { type: 'boolean' },
             available: { type: 'boolean' },
+            environment: { type: 'string', enum: ['sandbox', 'production'] },
+            clientIdPrefix: { type: 'string' },
             error: { type: 'string' },
             message: { type: 'string' },
           },
@@ -83,17 +85,19 @@ export function register(app: App, fastify: FastifyInstance) {
 
     let message = '';
     if (paypalStatus.available) {
-      message = 'PayPal payment processing is operational';
+      message = `PayPal payment processing is operational in ${paypalStatus.environment} mode`;
     } else if (paypalStatus.initialized && !paypalStatus.available) {
       message = `PayPal is not available: ${paypalStatus.error}`;
     } else {
-      message = 'PayPal service has not been initialized';
+      message = 'PayPal service has not been initialized. Missing PAYPAL_CLIENT_ID or PAYPAL_CLIENT_SECRET environment variables.';
     }
 
     await reply.status(200).send({
       initialized: paypalStatus.initialized,
       available: paypalStatus.available,
-      error: paypalStatus.error,
+      environment: paypalStatus.environment || null,
+      clientIdPrefix: paypalStatus.clientIdPrefix || null,
+      error: paypalStatus.error || null,
       message,
     });
   });

@@ -88,8 +88,16 @@ export function register(app: App, fastify: FastifyInstance) {
       if (!isPayPalAvailable()) {
         const paypalStatus = getPayPalStatus();
         app.logger.error({ paypalStatus }, 'PayPal service is not available - payment processing is disabled');
+
+        let errorMessage = 'Payment processing is currently unavailable.';
+        if (!paypalStatus.initialized) {
+          errorMessage += ' PayPal service not initialized. Please ensure PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET environment variables are set.';
+        } else {
+          errorMessage += ` ${paypalStatus.error}`;
+        }
+
         await reply.status(503).send({
-          error: 'Payment processing is currently unavailable. PayPal credentials not configured.',
+          error: errorMessage,
           details: paypalStatus.error,
         });
         return;
