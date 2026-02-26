@@ -49,9 +49,25 @@ export default function PayPalDiagnosticsScreen() {
     console.log('PayPal Diagnostics: Fetching backend status...');
     try {
       setError(null);
-      const response = await apiGet('/status');
-      console.log('PayPal Diagnostics: Status response received:', JSON.stringify(response, null, 2));
-      setStatus(response);
+      // Fetch both general status and dedicated PayPal status endpoint
+      const [generalResponse, paypalResponse] = await Promise.all([
+        apiGet('/status'),
+        apiGet('/status/paypal'),
+      ]);
+      console.log('PayPal Diagnostics: General status response:', JSON.stringify(generalResponse, null, 2));
+      console.log('PayPal Diagnostics: PayPal status response:', JSON.stringify(paypalResponse, null, 2));
+      // Merge the detailed PayPal status (clientIdPrefix, environment, message) into the general status
+      const merged: AppStatus = {
+        ...generalResponse,
+        services: {
+          ...generalResponse.services,
+          paypal: {
+            ...generalResponse.services?.paypal,
+            ...paypalResponse,
+          },
+        },
+      };
+      setStatus(merged);
     } catch (err) {
       console.error('PayPal Diagnostics: Error fetching status:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch status');

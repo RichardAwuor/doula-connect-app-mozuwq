@@ -20,6 +20,8 @@ interface PayPalStatus {
   available: boolean;
   error?: string;
   message?: string;
+  clientIdPrefix?: string;
+  environment?: string;
 }
 
 interface AppStatus {
@@ -27,11 +29,7 @@ interface AppStatus {
   timestamp: string;
   services: {
     database: string;
-    paypal: {
-      initialized: boolean;
-      available: boolean;
-      error?: string;
-    };
+    paypal: PayPalStatus;
   };
 }
 
@@ -51,9 +49,25 @@ export default function PayPalStatusScreen() {
     console.log('PayPal Status: Fetching backend status...');
     try {
       setError(null);
-      const response = await apiGet('/status');
-      console.log('PayPal Status: Status response received:', JSON.stringify(response, null, 2));
-      setStatus(response);
+      // Fetch both general status and dedicated PayPal status endpoint
+      const [generalResponse, paypalResponse] = await Promise.all([
+        apiGet('/status'),
+        apiGet('/status/paypal'),
+      ]);
+      console.log('PayPal Status: General status response:', JSON.stringify(generalResponse, null, 2));
+      console.log('PayPal Status: PayPal status response:', JSON.stringify(paypalResponse, null, 2));
+      // Merge the detailed PayPal status into the general status
+      const merged: AppStatus = {
+        ...generalResponse,
+        services: {
+          ...generalResponse.services,
+          paypal: {
+            ...generalResponse.services?.paypal,
+            ...paypalResponse,
+          },
+        },
+      };
+      setStatus(merged);
     } catch (err) {
       console.error('PayPal Status: Error fetching status:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch status');
@@ -190,6 +204,27 @@ export default function PayPalStatusScreen() {
                     {status.services.paypal.available ? 'Yes' : 'No'}
                   </Text>
                 </View>
+                {status.services.paypal.environment && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Environment:</Text>
+                    <Text
+                      style={[
+                        styles.detailValue,
+                        { color: status.services.paypal.environment === 'sandbox' ? '#FF9800' : '#4CAF50' },
+                      ]}
+                    >
+                      {status.services.paypal.environment}
+                    </Text>
+                  </View>
+                )}
+                {status.services.paypal.clientIdPrefix && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Client ID:</Text>
+                    <Text style={[styles.detailValue, { color: '#2196F3' }]}>
+                      {status.services.paypal.clientIdPrefix}...
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Backend Status:</Text>
                   <Text
