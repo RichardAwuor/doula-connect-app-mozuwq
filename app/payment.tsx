@@ -66,7 +66,7 @@ export default function PaymentScreen() {
   }
 
   const isParent = userProfile.userType === 'parent';
-  const subscriptionFee = 99;
+  const subscriptionFee = '99.99';
   const subscriptionPeriod = isParent ? 'Annual' : 'Monthly';
   const planType = isParent ? 'annual' : 'monthly';
 
@@ -228,7 +228,7 @@ export default function PaymentScreen() {
 
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total Amount:</Text>
-            <Text style={styles.totalValue}>${subscriptionFee}.00 USD</Text>
+            <Text style={styles.totalValue}>${subscriptionFee} USD</Text>
           </View>
         </View>
 
