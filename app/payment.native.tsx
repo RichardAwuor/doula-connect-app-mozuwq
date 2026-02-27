@@ -20,7 +20,6 @@ import { apiPost, apiGet } from '@/utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as InAppPurchases from 'react-native-iap';
 
-// Product IDs for in-app purchases
 const PRODUCT_IDS = {
   parent_annual: Platform.select({
     ios: 'com.doulaconnect.parent.annual',
@@ -44,6 +43,7 @@ export default function PaymentScreen() {
   const [iapAvailable, setIapAvailable] = useState(false);
   const [products, setProducts] = useState<InAppPurchases.Product[]>([]);
   const [restoringPurchases, setRestoringPurchases] = useState(false);
+  const [showDiagnosticsButton, setShowDiagnosticsButton] = useState(false);
 
   useEffect(() => {
     console.log('[Payment Native] User profile:', userProfile ? {
@@ -55,7 +55,6 @@ export default function PaymentScreen() {
     initializeIAP();
 
     return () => {
-      // Cleanup IAP connection
       InAppPurchases.endConnection();
     };
   }, [userProfile]);
@@ -67,7 +66,6 @@ export default function PaymentScreen() {
       console.log('[Payment Native] IAP connection result:', result);
       setIapAvailable(true);
 
-      // Get available products
       if (userProfile) {
         const productId = userProfile.userType === 'parent' 
           ? PRODUCT_IDS.parent_annual 
@@ -79,7 +77,6 @@ export default function PaymentScreen() {
       }
     } catch (error) {
       console.warn('[Payment Native] IAP initialization failed:', error);
-      // Silently disable IAP option - don't show error modal
       setIapAvailable(false);
     }
   };
@@ -124,11 +121,9 @@ export default function PaymentScreen() {
     setSelectedMethod('iap');
 
     try {
-      // Request purchase
       console.log('[Payment Native] Requesting purchase for product:', productId);
       await InAppPurchases.requestPurchase({ sku: productId });
 
-      // Listen for purchase updates
       const purchaseUpdateSubscription = InAppPurchases.purchaseUpdatedListener(
         async (purchase: InAppPurchases.Purchase) => {
           console.log('[Payment Native] Purchase updated:', purchase);
@@ -136,7 +131,6 @@ export default function PaymentScreen() {
           const receipt = purchase.transactionReceipt;
           if (receipt) {
             try {
-              // Verify purchase with backend
               console.log('[Payment Native] Verifying purchase with backend...');
               console.log('[Payment Native] POST /api/payments/verify-iap', {
                 userId: userProfile.id,
@@ -157,7 +151,6 @@ export default function PaymentScreen() {
                 throw new Error(verifyResponse.error || 'Purchase verification failed');
               }
               
-              // Update local profile to reflect active subscription
               const updatedProfile = {
                 ...userProfile,
                 subscriptionActive: true,
@@ -166,7 +159,6 @@ export default function PaymentScreen() {
               setUserProfile(updatedProfile);
               await AsyncStorage.setItem('doula_connect_subscription_active', 'true');
               
-              // Finish transaction
               await InAppPurchases.finishTransaction({ purchase });
               
               console.log('[Payment Native] Purchase verified and activated successfully!');
@@ -186,7 +178,6 @@ export default function PaymentScreen() {
         }
       );
 
-      // Cleanup subscriptions after 30 seconds
       setTimeout(() => {
         purchaseUpdateSubscription.remove();
         purchaseErrorSubscription.remove();
@@ -207,27 +198,26 @@ export default function PaymentScreen() {
     setSelectedMethod('paypal');
 
     try {
-      // Pre-flight check: verify PayPal service is available
       console.log('[Payment Native] Checking PayPal service availability...');
       try {
         const statusResponse = await apiGet('/status/paypal');
         console.log('[Payment Native] PayPal status:', statusResponse);
         if (!statusResponse.available) {
+          setShowDiagnosticsButton(true);
           throw new Error(
             statusResponse.error ||
             'Payment processing is currently unavailable. PayPal credentials not configured.'
           );
         }
       } catch (statusError: any) {
-        // If status check itself fails with a PayPal-related error, surface it
         if (
           statusError.message?.includes('Payment processing') ||
           statusError.message?.includes('PayPal') ||
           statusError.message?.includes('unavailable')
         ) {
+          setShowDiagnosticsButton(true);
           throw statusError;
         }
-        // Otherwise, proceed anyway (status endpoint might not be accessible)
         console.warn('[Payment Native] Could not check PayPal status, proceeding anyway:', statusError.message);
       }
 
@@ -244,7 +234,6 @@ export default function PaymentScreen() {
         console.log('[Payment Native] Opening PayPal approval URL');
         await Linking.openURL(response.approvalUrl);
         
-        // Reset processing state after opening URL
         setProcessing(false);
         setSelectedMethod(null);
       } else {
@@ -276,7 +265,6 @@ export default function PaymentScreen() {
       console.log('[Payment Native] Restore purchases response:', response);
 
       if (response.success && response.hasActiveSubscription) {
-        // Update local profile to reflect active subscription
         const updatedProfile = {
           ...userProfile,
           subscriptionActive: true,
@@ -304,7 +292,6 @@ export default function PaymentScreen() {
   const handlePaymentError = (error: any) => {
     console.error('[Payment Native] Payment error details:', error);
     
-    // Check if user cancelled - don't show error modal for cancellations
     if (error.code === 'E_USER_CANCELLED') {
       console.log('[Payment Native] User cancelled payment');
       return;
@@ -315,15 +302,15 @@ export default function PaymentScreen() {
 
     const errorMsg = error?.message || '';
 
-    // Check for PayPal service unavailable (503) - message comes from apiPost as thrown Error
     if (
       errorMsg.includes('Payment processing is currently unavailable') ||
       errorMsg.includes('PayPal credentials not configured') ||
       errorMsg.includes('Service Unavailable') ||
       errorMsg.includes('503')
     ) {
-      userMessage = 'Payment processing is currently unavailable. The PayPal service is not configured on the server. Please contact support or try again later.';
+      userMessage = 'Payment processing is currently unavailable. The PayPal service is not configured on the server.';
       technicalDetails = 'Backend error: PayPal credentials (PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET) are not set in the server environment.';
+      setShowDiagnosticsButton(true);
     } else if (
       errorMsg.includes('Missing required fields') ||
       errorMsg.includes('must choose')
@@ -473,6 +460,18 @@ export default function PaymentScreen() {
             ) : (
               <Text style={commonStyles.outlineButtonText}>Restore Purchases</Text>
             )}
+          </TouchableOpacity>
+        )}
+
+        {showDiagnosticsButton && (
+          <TouchableOpacity
+            style={[commonStyles.outlineButton, { marginTop: 12, borderColor: colors.primary }]}
+            onPress={() => router.push('/payment-diagnostics')}
+            disabled={processing || restoringPurchases}
+          >
+            <Text style={[commonStyles.outlineButtonText, { color: colors.primary }]}>
+              View Payment Diagnostics
+            </Text>
           </TouchableOpacity>
         )}
 

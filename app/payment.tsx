@@ -28,6 +28,7 @@ export default function PaymentScreen() {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [errorDetails, setErrorDetails] = useState('');
+  const [showDiagnosticsButton, setShowDiagnosticsButton] = useState(false);
 
   useEffect(() => {
     console.log('[Payment] User profile:', userProfile ? {
@@ -76,27 +77,26 @@ export default function PaymentScreen() {
     setSelectedMethod('paypal');
 
     try {
-      // Pre-flight check: verify PayPal service is available
       console.log('[Payment] Checking PayPal service availability...');
       try {
         const statusResponse = await apiGet('/status/paypal');
         console.log('[Payment] PayPal status:', statusResponse);
         if (!statusResponse.available) {
+          setShowDiagnosticsButton(true);
           throw new Error(
             statusResponse.error ||
             'Payment processing is currently unavailable. PayPal credentials not configured.'
           );
         }
       } catch (statusError: any) {
-        // If status check itself fails with a PayPal-related error, surface it
         if (
           statusError.message?.includes('Payment processing') ||
           statusError.message?.includes('PayPal') ||
           statusError.message?.includes('unavailable')
         ) {
+          setShowDiagnosticsButton(true);
           throw statusError;
         }
-        // Otherwise, proceed anyway (status endpoint might not be accessible)
         console.warn('[Payment] Could not check PayPal status, proceeding anyway:', statusError.message);
       }
 
@@ -111,15 +111,10 @@ export default function PaymentScreen() {
 
       if (response.success && response.approvalUrl) {
         console.log('[Payment] Redirecting to PayPal approval URL');
-        // Open PayPal approval URL in browser
         await Linking.openURL(response.approvalUrl);
         
-        // Reset processing state after opening URL
         setProcessing(false);
         setSelectedMethod(null);
-        
-        // Note: User will be redirected back to the app after payment
-        // The webhook will handle subscription activation
       } else {
         throw new Error('Failed to create PayPal order - no approval URL returned');
       }
@@ -146,15 +141,15 @@ export default function PaymentScreen() {
 
     const errorMsg = error?.message || '';
 
-    // Check for PayPal service unavailable (503) - message comes from apiPost as thrown Error
     if (
       errorMsg.includes('Payment processing is currently unavailable') ||
       errorMsg.includes('PayPal credentials not configured') ||
       errorMsg.includes('Service Unavailable') ||
       errorMsg.includes('503')
     ) {
-      userMessage = 'Payment processing is currently unavailable. The PayPal service is not configured on the server. Please contact support or try again later.';
+      userMessage = 'Payment processing is currently unavailable. The PayPal service is not configured on the server.';
       technicalDetails = 'Backend error: PayPal credentials (PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET) are not set in the server environment.';
+      setShowDiagnosticsButton(true);
     } else if (
       errorMsg.includes('Missing required fields') ||
       errorMsg.includes('must choose')
@@ -284,6 +279,18 @@ export default function PaymentScreen() {
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.processingText}>{processingText}</Text>
           </View>
+        )}
+
+        {showDiagnosticsButton && (
+          <TouchableOpacity
+            style={[commonStyles.outlineButton, { marginTop: 12, borderColor: colors.primary }]}
+            onPress={() => router.push('/payment-diagnostics')}
+            disabled={processing}
+          >
+            <Text style={[commonStyles.outlineButtonText, { color: colors.primary }]}>
+              View Payment Diagnostics
+            </Text>
+          </TouchableOpacity>
         )}
 
         <TouchableOpacity
