@@ -270,17 +270,18 @@ export default function PayPalStatusScreen() {
 
             {!status.services.paypal.available && (
               <View style={styles.helpCard}>
-                <Text style={styles.helpTitle}>Configuration Required</Text>
+                <Text style={styles.helpTitle}>Service Temporarily Unavailable</Text>
                 <Text style={styles.helpText}>
-                  PayPal payment processing is not available. Please ensure the following environment
-                  variables are set in your backend:
+                  PayPal payment processing is not currently available. This may be a temporary issue.
+                  Please try again in a few moments or contact support if the problem persists.
                 </Text>
-                <View style={styles.codeBlock}>
-                  <Text style={styles.codeText}>PAYPAL_CLIENT_ID=your_client_id</Text>
-                  <Text style={styles.codeText}>PAYPAL_CLIENT_SECRET=your_secret</Text>
-                </View>
+                {status.services.paypal.error && (
+                  <View style={styles.codeBlock}>
+                    <Text style={styles.codeText}>{status.services.paypal.error}</Text>
+                  </View>
+                )}
                 <Text style={styles.helpText}>
-                  After setting these variables, restart the backend server.
+                  Pull down to refresh and check the status again.
                 </Text>
               </View>
             )}

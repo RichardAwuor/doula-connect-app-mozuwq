@@ -314,11 +314,17 @@ export default function PayPalDiagnosticsScreen() {
                 <Text style={styles.infoText}>• PAYPAL_CLIENT_SECRET</Text>
                 <Text style={styles.infoText}>• PAYPAL_WEBHOOK_ID (optional)</Text>
               </View>
-              <View style={styles.infoCard}>
-                <Text style={styles.infoTitle}>Your Credentials:</Text>
-                <Text style={styles.infoText}>Client ID: AU5OPdLj48...</Text>
-                <Text style={styles.infoText}>Secret: EFem4fJaba...</Text>
-              </View>
+              {status?.services.paypal.available && status?.services.paypal.clientIdPrefix && (
+                <View style={[styles.infoCard, { backgroundColor: '#E8F5E9' }]}>
+                  <Text style={[styles.infoTitle, { color: '#2E7D32' }]}>✓ Credentials Configured</Text>
+                  <Text style={[styles.infoText, { color: '#388E3C' }]}>
+                    Client ID: {status.services.paypal.clientIdPrefix}... (configured)
+                  </Text>
+                  <Text style={[styles.infoText, { color: '#388E3C' }]}>
+                    Environment: {status.services.paypal.environment}
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Troubleshooting */}

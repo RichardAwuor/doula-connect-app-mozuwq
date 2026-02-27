@@ -218,17 +218,18 @@ export default function PaymentDiagnosticsScreen() {
             {!status.services.paypal.available && (
               <View style={commonStyles.card}>
                 <Text style={[commonStyles.subtitle, { color: colors.error }]}>
-                  Configuration Required
+                  Service Temporarily Unavailable
                 </Text>
                 <Text style={styles.helpText}>
-                  PayPal payment processing is currently unavailable. The following environment variables must be configured on the backend server:
+                  PayPal payment processing is not currently available. This may be a temporary issue with the payment service.
                 </Text>
-                <View style={styles.codeBlock}>
-                  <Text style={styles.codeText}>PAYPAL_CLIENT_ID</Text>
-                  <Text style={styles.codeText}>PAYPAL_CLIENT_SECRET</Text>
-                </View>
+                {status.services.paypal.error && (
+                  <View style={styles.codeBlock}>
+                    <Text style={styles.codeText}>{status.services.paypal.error}</Text>
+                  </View>
+                )}
                 <Text style={styles.helpText}>
-                  Please contact your system administrator to configure these credentials.
+                  Please try refreshing the status or try again later. If the problem persists, contact support.
                 </Text>
               </View>
             )}

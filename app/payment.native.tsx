@@ -196,6 +196,7 @@ export default function PaymentScreen() {
     console.log('[Payment Native] Starting PayPal payment process...');
     setProcessing(true);
     setSelectedMethod('paypal');
+    setShowDiagnosticsButton(false);
 
     try {
       console.log('[Payment Native] Checking PayPal service availability...');
@@ -206,13 +207,13 @@ export default function PaymentScreen() {
           setShowDiagnosticsButton(true);
           throw new Error(
             statusResponse.error ||
-            'Payment processing is currently unavailable. PayPal credentials not configured.'
+            'Payment processing is temporarily unavailable. Please try again later.'
           );
         }
+        console.log('[Payment Native] PayPal is available, environment:', statusResponse.environment);
       } catch (statusError: any) {
         if (
           statusError.message?.includes('Payment processing') ||
-          statusError.message?.includes('PayPal') ||
           statusError.message?.includes('unavailable')
         ) {
           setShowDiagnosticsButton(true);
@@ -221,6 +222,7 @@ export default function PaymentScreen() {
         console.warn('[Payment Native] Could not check PayPal status, proceeding anyway:', statusError.message);
       }
 
+      console.log('[Payment Native] Creating PayPal order for user:', userProfile.id, 'type:', userProfile.userType, 'plan:', planType);
       const response = await apiPost('/payments/create-session', {
         userId: userProfile.id,
         userType: userProfile.userType,
@@ -308,8 +310,8 @@ export default function PaymentScreen() {
       errorMsg.includes('Service Unavailable') ||
       errorMsg.includes('503')
     ) {
-      userMessage = 'Payment processing is currently unavailable. The PayPal service is not configured on the server.';
-      technicalDetails = 'Backend error: PayPal credentials (PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET) are not set in the server environment.';
+      userMessage = 'Payment processing is temporarily unavailable. Please try again in a few moments.';
+      technicalDetails = errorMsg;
       setShowDiagnosticsButton(true);
     } else if (
       errorMsg.includes('Missing required fields') ||
