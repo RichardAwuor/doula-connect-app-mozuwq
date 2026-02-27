@@ -6,8 +6,8 @@ import { getPayPalClient, isPayPalAvailable, getPayPalStatus, getWebhookVerifica
 import * as checkoutNodeJssdk from '@paypal/checkout-server-sdk';
 
 // Pricing constants (in dollars)
-const PARENT_ANNUAL_PRICE = '99.00';
-const DOULA_MONTHLY_PRICE = '99.00';
+const PARENT_ANNUAL_PRICE = '99.99';
+const DOULA_MONTHLY_PRICE = '99.99';
 
 interface CreatePaymentSessionRequest {
   userId: string;
@@ -115,7 +115,7 @@ export function register(app: App, fastify: FastifyInstance) {
       }
 
       const price = userType === 'parent' ? PARENT_ANNUAL_PRICE : DOULA_MONTHLY_PRICE;
-      const planName = userType === 'parent' ? 'Parent Annual Plan ($99/year)' : 'Doula Monthly Plan ($99/month)';
+      const planName = userType === 'parent' ? 'Parent Annual Plan ($99.99/year)' : 'Doula Monthly Plan ($99.99/month)';
       const description = userType === 'parent'
         ? 'Annual subscription to Doula Connect platform for parents'
         : 'Monthly subscription to Doula Connect platform for doulas';
