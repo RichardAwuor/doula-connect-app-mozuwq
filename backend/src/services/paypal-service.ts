@@ -36,12 +36,31 @@ export function initializePayPal(logger?: any): { success: boolean; error?: stri
   const clientId = process.env.PAYPAL_CLIENT_ID;
   const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
 
+  // Log credential loading status for debugging
+  if (logger) {
+    const clientIdLoaded = clientId && clientId.trim() !== '';
+    const clientSecretLoaded = clientSecret && clientSecret.trim() !== '';
+    logger.debug(
+      {
+        clientIdLoaded,
+        clientSecretLoaded,
+        clientIdLength: clientId?.length || 0,
+        clientSecretLength: clientSecret?.length || 0,
+      },
+      'PayPal credential loading status'
+    );
+  }
+
   // Validate credentials exist and are not empty
   if (!clientId || clientId.trim() === '') {
     paypalError = 'PAYPAL_CLIENT_ID environment variable is required. Payment processing is disabled.';
     paypalInitialized = true;
     if (logger) {
-      logger.error('PayPal initialization failed: PAYPAL_CLIENT_ID not configured');
+      logger.error({
+        issue: 'PAYPAL_CLIENT_ID not configured',
+        checked: 'process.env.PAYPAL_CLIENT_ID',
+        recommendation: 'Set PAYPAL_CLIENT_ID in .env file or as an environment variable'
+      }, 'PayPal initialization failed: PAYPAL_CLIENT_ID not configured');
     }
     return { success: false, error: paypalError };
   }
@@ -50,7 +69,11 @@ export function initializePayPal(logger?: any): { success: boolean; error?: stri
     paypalError = 'PAYPAL_CLIENT_SECRET environment variable is required. Payment processing is disabled.';
     paypalInitialized = true;
     if (logger) {
-      logger.error('PayPal initialization failed: PAYPAL_CLIENT_SECRET not configured');
+      logger.error({
+        issue: 'PAYPAL_CLIENT_SECRET not configured',
+        checked: 'process.env.PAYPAL_CLIENT_SECRET',
+        recommendation: 'Set PAYPAL_CLIENT_SECRET in .env file or as an environment variable'
+      }, 'PayPal initialization failed: PAYPAL_CLIENT_SECRET not configured');
     }
     return { success: false, error: paypalError };
   }
@@ -74,11 +97,16 @@ export function initializePayPal(logger?: any): { success: boolean; error?: stri
       logger.info(
         {
           environment: mode,
+          sdkInitialized: paypalClient !== null,
           clientId: maskedClientId,
           clientSecret: maskedClientSecret,
           clientIdPrefix: paypalClientIdPrefix,
+          credentialsLength: {
+            clientId: clientId.length,
+            clientSecret: clientSecret.length,
+          },
         },
-        `PayPal client successfully initialized in ${mode} mode`
+        `✓ PayPal client successfully initialized in ${mode} mode`
       );
     }
 
@@ -87,7 +115,12 @@ export function initializePayPal(logger?: any): { success: boolean; error?: stri
     paypalError = `Failed to initialize PayPal: ${error instanceof Error ? error.message : String(error)}`;
     paypalInitialized = true;
     if (logger) {
-      logger.error({ err: error }, 'PayPal initialization failed - unable to create client with provided credentials');
+      logger.error({
+        err: error,
+        clientIdLength: clientId.length,
+        clientSecretLength: clientSecret.length,
+        errorMessage: error instanceof Error ? error.message : String(error)
+      }, 'PayPal initialization failed - unable to create client with provided credentials');
     }
     return { success: false, error: paypalError };
   }

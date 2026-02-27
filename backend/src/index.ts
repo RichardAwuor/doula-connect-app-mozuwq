@@ -21,6 +21,12 @@ export type App = typeof app;
 
 // Initialize PayPal before starting server
 app.logger.info('Initializing PayPal payment service...');
+app.logger.debug({
+  clientIdConfigured: !!process.env.PAYPAL_CLIENT_ID,
+  clientSecretConfigured: !!process.env.PAYPAL_CLIENT_SECRET,
+  nodeEnv: process.env.NODE_ENV,
+}, 'PayPal configuration check');
+
 const paypalInit = initializePayPal(app.logger);
 
 if (paypalInit.success) {
@@ -28,6 +34,7 @@ if (paypalInit.success) {
 } else {
   app.logger.error(`✗ PayPal initialization failed: ${paypalInit.error}`);
   app.logger.warn('⚠ Payment processing features will be UNAVAILABLE until PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET are configured');
+  app.logger.warn('📝 To fix: Set environment variables or create .env file with PayPal credentials');
 }
 
 // Log PayPal status
