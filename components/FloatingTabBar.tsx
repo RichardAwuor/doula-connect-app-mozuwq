@@ -117,7 +117,7 @@ export default function FloatingTabBar({
     };
   });
 
-  // Dynamic styles based on theme - Active indicator and icon color set to pink
+  // Dynamic styles based on theme - Active indicator and icon color set to magenta
   const dynamicStyles = {
     blurContainer: {
       ...styles.blurContainer,
@@ -147,7 +147,7 @@ export default function FloatingTabBar({
     },
     indicator: {
       ...styles.indicator,
-      backgroundColor: colors.primary, // Pink color (#FF69B4) for active tab indicator
+      backgroundColor: colors.primary,
       width: `${tabWidthPercent}%` as `${number}%`,
     },
   };
