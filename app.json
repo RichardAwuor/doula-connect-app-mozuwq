@@ -1,10 +1,11 @@
+
 {
   "expo": {
     "name": "Doula Connect",
     "slug": "doula-connect",
-    "version": "1.0.26",
+    "version": "1.0.27",
     "orientation": "portrait",
-    "icon": "./assets/images/513e13a3-c9f9-4145-b2f8-d31f632a5ece.png",
+    "icon": "./assets/images/final_quest_240x240.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "scheme": "doulaconnect",
@@ -16,24 +17,24 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.richardawuor.doulaconnect",
-      "buildNumber": "26",
+      "buildNumber": "27",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "icon": "./assets/images/513e13a3-c9f9-4145-b2f8-d31f632a5ece.png",
+      "icon": "./assets/images/final_quest_240x240.png",
       "config": {
         "usesNonExemptEncryption": false
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/513e13a3-c9f9-4145-b2f8-d31f632a5ece.png",
+        "foregroundImage": "./assets/images/final_quest_240x240.png",
         "backgroundColor": "#FFF5F0"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.simphoni.doulaconnect",
-      "versionCode": 26,
-      "icon": "./assets/images/513e13a3-c9f9-4145-b2f8-d31f632a5ece.png"
+      "versionCode": 27,
+      "icon": "./assets/images/final_quest_240x240.png"
     },
     "web": {
       "favicon": "./assets/images/2c7e0498-b523-4877-88ba-eae9afdb3794.png",
