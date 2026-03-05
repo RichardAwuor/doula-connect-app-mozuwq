@@ -302,7 +302,7 @@ export default function PaymentScreen() {
           ) : (
             <>
               <IconSymbol
-                ios_icon_name="bag.fill"
+                ios_icon_name="applelogo"
                 android_material_icon_name="shopping-bag"
                 size={20}
                 color="#FFFFFF"
