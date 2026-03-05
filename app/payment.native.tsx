@@ -438,14 +438,14 @@ export default function PaymentScreen() {
               <Text style={styles.paymentMethodTitle}>Payment Method</Text>
               <View style={styles.paymentMethodRow}>
                 <IconSymbol
-                  ios_icon_name="creditcard.fill"
-                  android_material_icon_name="credit-card"
+                  ios_icon_name="applelogo"
+                  android_material_icon_name="shopping-bag"
                   size={24}
                   color={colors.text}
                 />
                 <View style={styles.paymentMethodInfo}>
                   <Text style={styles.paymentMethodText}>
-                    {Platform.OS === 'ios' ? 'Apple Pay' : 'Google Pay'}
+                    {Platform.OS === 'ios' ? 'Pay with Apple' : 'Pay with Google'}
                   </Text>
                   <Text style={styles.paymentMethodSubtext}>
                     {userProfile.email}
