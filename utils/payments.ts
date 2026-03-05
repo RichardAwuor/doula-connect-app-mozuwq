@@ -108,9 +108,9 @@ export async function verifyPurchase(
 ): Promise<{ success: boolean; subscriptionId?: string; expiresAt?: string; error?: string }> {
   try {
     console.log('[Payments] Verifying purchase with backend...');
-    console.log('[Payments] POST /api/payments/verify-iap', { userId, platform, productId });
+    console.log('[Payments] POST /api/iap/verify-receipt', { userId, platform, productId });
     
-    const response = await apiPost('/api/payments/verify-iap', {
+    const response = await apiPost('/api/iap/verify-receipt', {
       userId,
       receipt,
       platform,
@@ -150,9 +150,9 @@ export async function restorePurchases(
 ): Promise<{ success: boolean; hasActiveSubscription: boolean; subscription?: any }> {
   try {
     console.log('[Payments] Restoring purchases...');
-    console.log('[Payments] POST /api/payments/restore-purchases', { userId, platform });
+    console.log('[Payments] POST /api/iap/restore-purchases', { userId, platform });
     
-    const response = await apiPost('/api/payments/restore-purchases', {
+    const response = await apiPost('/api/iap/restore-purchases', {
       userId,
       platform,
     });
@@ -174,9 +174,9 @@ export async function restorePurchases(
 export async function getSubscriptionStatus(userId: string): Promise<SubscriptionStatus> {
   try {
     console.log('[Payments] Fetching subscription status for user:', userId);
-    console.log('[Payments] GET /api/payments/subscription-status/' + userId);
+    console.log('[Payments] GET /api/iap/subscription-status/' + userId);
     
-    const response = await apiGet(`/api/payments/subscription-status/${userId}`);
+    const response = await apiGet(`/api/iap/subscription-status/${userId}`);
     
     console.log('[Payments] Subscription status response:', response);
     
@@ -195,36 +195,6 @@ export async function getSubscriptionStatus(userId: string): Promise<Subscriptio
     console.error('[Payments] Failed to get subscription status:', error);
     // 404 means no subscription found - that's a valid state
     return { status: 'none' };
-  }
-}
-
-/**
- * Create PayPal payment session
- */
-export async function createPayPalSession(
-  userId: string,
-  userType: 'parent' | 'doula',
-  planType: 'annual' | 'monthly',
-  email: string
-): Promise<{ success: boolean; orderId?: string; approvalUrl?: string; error?: string }> {
-  try {
-    console.log('[Payments] Creating PayPal session...');
-    
-    const response = await apiPost('/payments/create-session', {
-      userId,
-      userType,
-      planType,
-      email,
-    });
-
-    console.log('[Payments] PayPal session created:', response);
-    return response;
-  } catch (error: any) {
-    console.error('[Payments] Failed to create PayPal session:', error);
-    return {
-      success: false,
-      error: error.message || 'Failed to create payment session',
-    };
   }
 }
 

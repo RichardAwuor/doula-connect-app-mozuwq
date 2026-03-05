@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Platform,
   ActivityIndicator,
-  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -16,7 +15,7 @@ import { useUser } from '@/contexts/UserContext';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { ErrorModal } from '@/components/ConfirmModal';
-import { apiPost, apiGet } from '@/utils/api';
+import { apiPost } from '@/utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as InAppPurchases from 'react-native-iap';
 
@@ -32,18 +31,16 @@ const PRODUCT_IDS = {
 };
 
 export default function PaymentScreen() {
-  console.log('[Payment Native] Screen mounted - Native version');
+  console.log('[Payment Native] Screen mounted - iOS In-App Purchase version');
   const router = useRouter();
   const { userProfile, setUserProfile } = useUser();
   const [processing, setProcessing] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState<'iap' | 'paypal' | 'stripe' | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [errorDetails, setErrorDetails] = useState('');
   const [iapAvailable, setIapAvailable] = useState(false);
   const [products, setProducts] = useState<InAppPurchases.Product[]>([]);
   const [restoringPurchases, setRestoringPurchases] = useState(false);
-  const [showDiagnosticsButton, setShowDiagnosticsButton] = useState(false);
 
   useEffect(() => {
     console.log('[Payment Native] User profile:', userProfile ? {
@@ -61,7 +58,7 @@ export default function PaymentScreen() {
 
   const initializeIAP = async () => {
     try {
-      console.log('[Payment Native] Initializing in-app purchases...');
+      console.log('[Payment Native] Initializing iOS/Android in-app purchases...');
       const result = await InAppPurchases.initConnection();
       console.log('[Payment Native] IAP connection result:', result);
       setIapAvailable(true);
@@ -71,13 +68,17 @@ export default function PaymentScreen() {
           ? PRODUCT_IDS.parent_annual 
           : PRODUCT_IDS.doula_monthly;
         
+        console.log('[Payment Native] Fetching product:', productId);
         const availableProducts = await InAppPurchases.getProducts({ skus: [productId] });
         console.log('[Payment Native] Available products:', availableProducts);
         setProducts(availableProducts);
       }
     } catch (error) {
-      console.warn('[Payment Native] IAP initialization failed:', error);
+      console.error('[Payment Native] IAP initialization failed:', error);
       setIapAvailable(false);
+      setErrorMessage('Unable to connect to App Store. Please check your internet connection and try again.');
+      setErrorDetails(String(error));
+      setShowErrorModal(true);
     }
   };
 
@@ -115,10 +116,10 @@ export default function PaymentScreen() {
   const planType = isParent ? 'annual' : 'monthly';
   const productId = isParent ? PRODUCT_IDS.parent_annual : PRODUCT_IDS.doula_monthly;
 
-  const handleInAppPurchase = async () => {
-    console.log('[Payment Native] Starting in-app purchase...');
+  const handleSubscribe = async () => {
+    console.log('[Payment Native] User tapped Subscribe button');
+    console.log('[Payment Native] Starting iOS/Android in-app purchase flow...');
     setProcessing(true);
-    setSelectedMethod('iap');
 
     try {
       console.log('[Payment Native] Requesting purchase for product:', productId);
@@ -132,13 +133,13 @@ export default function PaymentScreen() {
           if (receipt) {
             try {
               console.log('[Payment Native] Verifying purchase with backend...');
-              console.log('[Payment Native] POST /api/payments/verify-iap', {
+              console.log('[Payment Native] POST /api/iap/verify-receipt', {
                 userId: userProfile.id,
                 platform: Platform.OS as 'ios' | 'android',
                 productId,
               });
               
-              const verifyResponse = await apiPost('/api/payments/verify-iap', {
+              const verifyResponse = await apiPost('/api/iap/verify-receipt', {
                 userId: userProfile.id,
                 receipt,
                 platform: Platform.OS as 'ios' | 'android',
@@ -161,7 +162,7 @@ export default function PaymentScreen() {
               
               await InAppPurchases.finishTransaction({ purchase });
               
-              console.log('[Payment Native] Purchase verified and activated successfully!');
+              console.log('[Payment Native] ✅ Purchase verified and subscription activated!');
               router.replace('/(tabs)/connect');
             } catch (error) {
               console.error('[Payment Native] Purchase verification error:', error);
@@ -188,78 +189,20 @@ export default function PaymentScreen() {
       handlePaymentError(error);
     } finally {
       setProcessing(false);
-      setSelectedMethod(null);
-    }
-  };
-
-  const handlePayPalPayment = async () => {
-    console.log('[Payment Native] Starting PayPal payment process...');
-    setProcessing(true);
-    setSelectedMethod('paypal');
-    setShowDiagnosticsButton(false);
-
-    try {
-      console.log('[Payment Native] Checking PayPal service availability...');
-      try {
-        const statusResponse = await apiGet('/status/paypal');
-        console.log('[Payment Native] PayPal status:', statusResponse);
-        if (!statusResponse.available) {
-          setShowDiagnosticsButton(true);
-          throw new Error(
-            statusResponse.error ||
-            'Payment processing is temporarily unavailable. Please try again later.'
-          );
-        }
-        console.log('[Payment Native] PayPal is available, environment:', statusResponse.environment);
-      } catch (statusError: any) {
-        if (
-          statusError.message?.includes('Payment processing') ||
-          statusError.message?.includes('unavailable')
-        ) {
-          setShowDiagnosticsButton(true);
-          throw statusError;
-        }
-        console.warn('[Payment Native] Could not check PayPal status, proceeding anyway:', statusError.message);
-      }
-
-      console.log('[Payment Native] Creating PayPal order for user:', userProfile.id, 'type:', userProfile.userType, 'plan:', planType);
-      const response = await apiPost('/payments/create-session', {
-        userId: userProfile.id,
-        userType: userProfile.userType,
-        planType: planType,
-        email: userProfile.email,
-      });
-
-      console.log('[Payment Native] PayPal order created:', response);
-
-      if (response.success && response.approvalUrl) {
-        console.log('[Payment Native] Opening PayPal approval URL');
-        await Linking.openURL(response.approvalUrl);
-        
-        setProcessing(false);
-        setSelectedMethod(null);
-      } else {
-        throw new Error('Failed to create PayPal order - no approval URL returned');
-      }
-    } catch (error: any) {
-      console.error('[Payment Native] PayPal payment error:', error);
-      handlePaymentError(error);
-      setProcessing(false);
-      setSelectedMethod(null);
     }
   };
 
   const handleRestorePurchases = async () => {
-    console.log('[Payment Native] Restoring purchases...');
+    console.log('[Payment Native] User tapped Restore Purchases');
     setRestoringPurchases(true);
 
     try {
-      console.log('[Payment Native] POST /api/payments/restore-purchases', {
+      console.log('[Payment Native] POST /api/iap/restore-purchases', {
         userId: userProfile.id,
         platform: Platform.OS as 'ios' | 'android',
       });
 
-      const response = await apiPost('/api/payments/restore-purchases', {
+      const response = await apiPost('/api/iap/restore-purchases', {
         userId: userProfile.id,
         platform: Platform.OS as 'ios' | 'android',
       });
@@ -274,7 +217,7 @@ export default function PaymentScreen() {
         setUserProfile(updatedProfile);
         await AsyncStorage.setItem('doula_connect_subscription_active', 'true');
 
-        console.log('[Payment Native] Purchases restored successfully!');
+        console.log('[Payment Native] ✅ Purchases restored successfully!');
         router.replace('/(tabs)/connect');
       } else {
         setErrorMessage('No active subscription found to restore. Please purchase a subscription to continue.');
@@ -305,31 +248,16 @@ export default function PaymentScreen() {
     const errorMsg = error?.message || '';
 
     if (
-      errorMsg.includes('Payment processing is currently unavailable') ||
-      errorMsg.includes('PayPal credentials not configured') ||
-      errorMsg.includes('Service Unavailable') ||
-      errorMsg.includes('503')
-    ) {
-      userMessage = 'Payment processing is temporarily unavailable. Please try again in a few moments.';
-      technicalDetails = errorMsg;
-      setShowDiagnosticsButton(true);
-    } else if (
-      errorMsg.includes('Missing required fields') ||
-      errorMsg.includes('must choose')
-    ) {
-      userMessage = errorMsg;
-      technicalDetails = 'Request validation failed.';
-    } else if (
-      errorMsg.includes('Failed to create payment order') ||
-      errorMsg.includes('500')
-    ) {
-      userMessage = 'Server error occurred while processing payment. Please try again later.';
-      technicalDetails = errorMsg;
-    } else if (
       errorMsg.includes('Network request failed') ||
       errorMsg.includes('Unable to connect')
     ) {
-      userMessage = 'Cannot connect to the payment server. Please check your internet connection.';
+      userMessage = 'Cannot connect to the App Store. Please check your internet connection.';
+      technicalDetails = errorMsg;
+    } else if (
+      errorMsg.includes('Purchase verification failed') ||
+      errorMsg.includes('500')
+    ) {
+      userMessage = 'Server error occurred while verifying your purchase. Please contact support.';
       technicalDetails = errorMsg;
     } else if (errorMsg) {
       userMessage = errorMsg;
@@ -343,8 +271,7 @@ export default function PaymentScreen() {
     setShowErrorModal(true);
   };
 
-  const paymentMethodLabel = selectedMethod === 'iap' ? 'In-App Purchase' : selectedMethod === 'paypal' ? 'PayPal' : '';
-  const processingText = processing ? `Processing ${paymentMethodLabel}...` : '';
+  const processingText = processing ? 'Processing subscription...' : '';
 
   return (
     <SafeAreaView style={commonStyles.container}>
@@ -390,91 +317,66 @@ export default function PaymentScreen() {
           </View>
         </View>
 
-        <View style={styles.paymentMethodsContainer}>
-          <Text style={[commonStyles.subtitle, { marginBottom: 16 }]}>Select Payment Method</Text>
-
-          {iapAvailable && (
+        {!iapAvailable ? (
+          <View style={styles.errorContainer}>
+            <IconSymbol
+              ios_icon_name="exclamationmark.triangle"
+              android_material_icon_name="warning"
+              size={48}
+              color={colors.error}
+            />
+            <Text style={styles.errorTitle}>Unable to Connect</Text>
+            <Text style={styles.errorSubtitle}>
+              Cannot connect to {Platform.OS === 'ios' ? 'App Store' : 'Google Play'}. Please check your internet connection and try again.
+            </Text>
             <TouchableOpacity
-              style={[styles.paymentMethodButton, processing && styles.buttonDisabled]}
-              onPress={handleInAppPurchase}
+              style={[commonStyles.button, { marginTop: 16 }]}
+              onPress={initializeIAP}
+            >
+              <Text style={commonStyles.buttonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={[commonStyles.button, processing && styles.buttonDisabled]}
+              onPress={handleSubscribe}
               disabled={processing}
             >
-              <View style={styles.paymentMethodContent}>
-                <IconSymbol
-                  ios_icon_name="bag.fill"
-                  android_material_icon_name="shopping-bag"
-                  size={24}
-                  color={colors.primary}
-                />
-                <View style={styles.paymentMethodText}>
-                  <Text style={styles.paymentMethodTitle}>
-                    {Platform.OS === 'ios' ? 'Apple In-App Purchase' : 'Google Play'}
-                  </Text>
-                  <Text style={styles.paymentMethodSubtitle}>
-                    Pay securely through {Platform.OS === 'ios' ? 'App Store' : 'Google Play'}
-                  </Text>
-                </View>
-              </View>
-              {processing && selectedMethod === 'iap' && (
-                <ActivityIndicator size="small" color={colors.primary} />
+              {processing ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <IconSymbol
+                    ios_icon_name="bag.fill"
+                    android_material_icon_name="shopping-bag"
+                    size={20}
+                    color="#FFFFFF"
+                  />
+                  <Text style={[commonStyles.buttonText, { marginLeft: 8 }]}>Subscribe</Text>
+                </>
               )}
             </TouchableOpacity>
-          )}
 
-          <TouchableOpacity
-            style={[styles.paymentMethodButton, processing && styles.buttonDisabled]}
-            onPress={handlePayPalPayment}
-            disabled={processing}
-          >
-            <View style={styles.paymentMethodContent}>
-              <IconSymbol
-                ios_icon_name="creditcard.fill"
-                android_material_icon_name="payment"
-                size={24}
-                color={colors.primary}
-              />
-              <View style={styles.paymentMethodText}>
-                <Text style={styles.paymentMethodTitle}>PayPal</Text>
-                <Text style={styles.paymentMethodSubtitle}>Pay securely with PayPal</Text>
+            {processing && (
+              <View style={styles.processingIndicator}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.processingText}>{processingText}</Text>
               </View>
-            </View>
-            {processing && selectedMethod === 'paypal' && (
-              <ActivityIndicator size="small" color={colors.primary} />
             )}
-          </TouchableOpacity>
-        </View>
 
-        {processing && (
-          <View style={styles.processingIndicator}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.processingText}>{processingText}</Text>
-          </View>
-        )}
-
-        {iapAvailable && (
-          <TouchableOpacity
-            style={[commonStyles.outlineButton, { marginTop: 12 }]}
-            onPress={handleRestorePurchases}
-            disabled={processing || restoringPurchases}
-          >
-            {restoringPurchases ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Text style={commonStyles.outlineButtonText}>Restore Purchases</Text>
-            )}
-          </TouchableOpacity>
-        )}
-
-        {showDiagnosticsButton && (
-          <TouchableOpacity
-            style={[commonStyles.outlineButton, { marginTop: 12, borderColor: colors.primary }]}
-            onPress={() => router.push('/payment-diagnostics')}
-            disabled={processing || restoringPurchases}
-          >
-            <Text style={[commonStyles.outlineButtonText, { color: colors.primary }]}>
-              View Payment Diagnostics
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[commonStyles.outlineButton, { marginTop: 12 }]}
+              onPress={handleRestorePurchases}
+              disabled={processing || restoringPurchases}
+            >
+              {restoringPurchases ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text style={commonStyles.outlineButtonText}>Restore Purchases</Text>
+              )}
+            </TouchableOpacity>
+          </>
         )}
 
         <TouchableOpacity
@@ -557,41 +459,27 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.primary,
   },
-  paymentMethodsContainer: {
-    marginTop: 24,
-  },
-  paymentMethodButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.card,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: colors.border,
-  },
-  paymentMethodContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  paymentMethodText: {
-    marginLeft: 16,
-    flex: 1,
-  },
-  paymentMethodTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  paymentMethodSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    padding: 24,
+    marginTop: 24,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  errorSubtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 22,
   },
   processingIndicator: {
     alignItems: 'center',

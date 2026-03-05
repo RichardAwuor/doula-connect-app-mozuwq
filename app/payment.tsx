@@ -6,9 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Platform,
   ActivityIndicator,
-  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -16,19 +14,14 @@ import { useUser } from '@/contexts/UserContext';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors, commonStyles } from '@/styles/commonStyles';
 import { ErrorModal } from '@/components/ConfirmModal';
-import { apiPost, apiGet } from '@/utils/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function PaymentScreen() {
-  console.log('[Payment] Screen mounted - Web version');
+  console.log('[Payment] Screen mounted - Web version (In-App Purchase not available on web)');
   const router = useRouter();
-  const { userProfile, setUserProfile } = useUser();
-  const [processing, setProcessing] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState<'paypal' | 'stripe' | null>(null);
+  const { userProfile } = useUser();
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [errorDetails, setErrorDetails] = useState('');
-  const [showDiagnosticsButton, setShowDiagnosticsButton] = useState(false);
 
   useEffect(() => {
     console.log('[Payment] User profile:', userProfile ? {
@@ -69,121 +62,6 @@ export default function PaymentScreen() {
   const isParent = userProfile.userType === 'parent';
   const subscriptionFee = '99.99';
   const subscriptionPeriod = isParent ? 'Annual' : 'Monthly';
-  const planType = isParent ? 'annual' : 'monthly';
-
-  const handlePayPalPayment = async () => {
-    console.log('[Payment] Starting PayPal payment process...');
-    setProcessing(true);
-    setSelectedMethod('paypal');
-    setShowDiagnosticsButton(false);
-
-    try {
-      console.log('[Payment] Checking PayPal service availability...');
-      try {
-        const statusResponse = await apiGet('/status/paypal');
-        console.log('[Payment] PayPal status:', statusResponse);
-        if (!statusResponse.available) {
-          setShowDiagnosticsButton(true);
-          throw new Error(
-            statusResponse.error ||
-            'Payment processing is currently unavailable. Please try again later.'
-          );
-        }
-        console.log('[Payment] PayPal is available, environment:', statusResponse.environment);
-      } catch (statusError: any) {
-        if (
-          statusError.message?.includes('Payment processing') ||
-          statusError.message?.includes('unavailable')
-        ) {
-          setShowDiagnosticsButton(true);
-          throw statusError;
-        }
-        console.warn('[Payment] Could not check PayPal status, proceeding anyway:', statusError.message);
-      }
-
-      console.log('[Payment] Creating PayPal order for user:', userProfile.id, 'type:', userProfile.userType, 'plan:', planType);
-      const response = await apiPost('/payments/create-session', {
-        userId: userProfile.id,
-        userType: userProfile.userType,
-        planType: planType,
-        email: userProfile.email,
-      });
-
-      console.log('[Payment] PayPal order created:', response);
-
-      if (response.success && response.approvalUrl) {
-        console.log('[Payment] Redirecting to PayPal approval URL');
-        await Linking.openURL(response.approvalUrl);
-        
-        setProcessing(false);
-        setSelectedMethod(null);
-      } else {
-        throw new Error('Failed to create PayPal order - no approval URL returned');
-      }
-    } catch (error: any) {
-      console.error('[Payment] PayPal payment error:', error);
-      handlePaymentError(error);
-      setProcessing(false);
-      setSelectedMethod(null);
-    }
-  };
-
-  const handleStripePayment = async () => {
-    console.log('[Payment] Stripe payment not yet implemented for web');
-    setErrorMessage('Stripe payment is coming soon. Please use PayPal for now.');
-    setErrorDetails('Stripe integration is in progress.');
-    setShowErrorModal(true);
-  };
-
-  const handlePaymentError = (error: any) => {
-    console.error('[Payment] Payment error details:', error);
-    
-    let userMessage = 'An unexpected error occurred during payment.';
-    let technicalDetails = '';
-
-    const errorMsg = error?.message || '';
-
-    if (
-      errorMsg.includes('Payment processing is currently unavailable') ||
-      errorMsg.includes('PayPal credentials not configured') ||
-      errorMsg.includes('Service Unavailable') ||
-      errorMsg.includes('503')
-    ) {
-      userMessage = 'Payment processing is temporarily unavailable. Please try again in a few moments.';
-      technicalDetails = errorMsg;
-      setShowDiagnosticsButton(true);
-    } else if (
-      errorMsg.includes('Missing required fields') ||
-      errorMsg.includes('must choose')
-    ) {
-      userMessage = errorMsg;
-      technicalDetails = 'Request validation failed.';
-    } else if (
-      errorMsg.includes('Failed to create payment order') ||
-      errorMsg.includes('500')
-    ) {
-      userMessage = 'Server error occurred while processing payment. Please try again later.';
-      technicalDetails = errorMsg;
-    } else if (
-      errorMsg.includes('Network request failed') ||
-      errorMsg.includes('Unable to connect')
-    ) {
-      userMessage = 'Cannot connect to the payment server. Please check your internet connection.';
-      technicalDetails = errorMsg;
-    } else if (errorMsg) {
-      userMessage = errorMsg;
-      technicalDetails = error.stack || error.toString();
-    } else {
-      technicalDetails = JSON.stringify(error, null, 2);
-    }
-
-    setErrorMessage(userMessage);
-    setErrorDetails(technicalDetails);
-    setShowErrorModal(true);
-  };
-
-  const paymentMethodLabel = selectedMethod === 'paypal' ? 'PayPal' : selectedMethod === 'stripe' ? 'Stripe' : '';
-  const processingText = processing ? `Processing ${paymentMethodLabel}...` : '';
 
   return (
     <SafeAreaView style={commonStyles.container}>
@@ -229,91 +107,45 @@ export default function PaymentScreen() {
           </View>
         </View>
 
-        <View style={styles.paymentMethodsContainer}>
-          <Text style={[commonStyles.subtitle, { marginBottom: 16 }]}>Select Payment Method</Text>
-
-          <TouchableOpacity
-            style={[styles.paymentMethodButton, processing && styles.buttonDisabled]}
-            onPress={handlePayPalPayment}
-            disabled={processing}
-          >
-            <View style={styles.paymentMethodContent}>
+        <View style={styles.webNoticeContainer}>
+          <IconSymbol
+            ios_icon_name="info.circle"
+            android_material_icon_name="info"
+            size={48}
+            color={colors.primary}
+          />
+          <Text style={styles.webNoticeTitle}>Mobile App Required</Text>
+          <Text style={styles.webNoticeSubtitle}>
+            Subscriptions are only available through the iOS or Android mobile app. Please download the Doula Connect app from the App Store or Google Play to subscribe.
+          </Text>
+          <View style={styles.storeLinksContainer}>
+            <View style={styles.storeLinkBox}>
               <IconSymbol
-                ios_icon_name="creditcard.fill"
-                android_material_icon_name="payment"
-                size={24}
-                color={colors.primary}
+                ios_icon_name="apple.logo"
+                android_material_icon_name="phone-iphone"
+                size={32}
+                color={colors.text}
               />
-              <View style={styles.paymentMethodText}>
-                <Text style={styles.paymentMethodTitle}>PayPal</Text>
-                <Text style={styles.paymentMethodSubtitle}>Pay securely with PayPal</Text>
-              </View>
+              <Text style={styles.storeLinkText}>Download on the App Store</Text>
             </View>
-            {processing && selectedMethod === 'paypal' && (
-              <ActivityIndicator size="small" color={colors.primary} />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.paymentMethodButton, styles.comingSoon, processing && styles.buttonDisabled]}
-            onPress={handleStripePayment}
-            disabled={processing}
-          >
-            <View style={styles.paymentMethodContent}>
+            <View style={styles.storeLinkBox}>
               <IconSymbol
-                ios_icon_name="creditcard"
-                android_material_icon_name="credit-card"
-                size={24}
-                color={colors.textSecondary}
+                ios_icon_name="play.circle"
+                android_material_icon_name="phone-android"
+                size={32}
+                color={colors.text}
               />
-              <View style={styles.paymentMethodText}>
-                <Text style={[styles.paymentMethodTitle, { color: colors.textSecondary }]}>
-                  Credit/Debit Card
-                </Text>
-                <Text style={styles.paymentMethodSubtitle}>Coming soon</Text>
-              </View>
+              <Text style={styles.storeLinkText}>Get it on Google Play</Text>
             </View>
-          </TouchableOpacity>
+          </View>
         </View>
 
-        {processing && (
-          <View style={styles.processingIndicator}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.processingText}>{processingText}</Text>
-          </View>
-        )}
-
-        {showDiagnosticsButton && (
-          <TouchableOpacity
-            style={[commonStyles.outlineButton, { marginTop: 12, borderColor: colors.primary }]}
-            onPress={() => router.push('/payment-diagnostics')}
-            disabled={processing}
-          >
-            <Text style={[commonStyles.outlineButtonText, { color: colors.primary }]}>
-              View Payment Diagnostics
-            </Text>
-          </TouchableOpacity>
-        )}
-
         <TouchableOpacity
-          style={[commonStyles.outlineButton, { marginTop: 12 }]}
+          style={[commonStyles.outlineButton, { marginTop: 24 }]}
           onPress={() => router.back()}
-          disabled={processing}
         >
           <Text style={commonStyles.outlineButtonText}>Back</Text>
         </TouchableOpacity>
-
-        <View style={styles.infoBox}>
-          <IconSymbol
-            ios_icon_name="lock.fill"
-            android_material_icon_name="lock"
-            size={20}
-            color={colors.success}
-          />
-          <Text style={styles.infoText}>
-            Your payment information is secure and encrypted. We never store your credit card details.
-          </Text>
-        </View>
       </ScrollView>
 
       <ErrorModal
@@ -375,70 +207,45 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.primary,
   },
-  paymentMethodsContainer: {
+  webNoticeContainer: {
+    alignItems: 'center',
+    padding: 24,
     marginTop: 24,
+    backgroundColor: colors.card,
+    borderRadius: 12,
   },
-  paymentMethodButton: {
+  webNoticeTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  webNoticeSubtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginTop: 12,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  storeLinksContainer: {
+    marginTop: 24,
+    width: '100%',
+  },
+  storeLinkBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.card,
+    backgroundColor: colors.background,
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.border,
   },
-  paymentMethodContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  paymentMethodText: {
+  storeLinkText: {
     marginLeft: 16,
-    flex: 1,
-  },
-  paymentMethodTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  paymentMethodSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  comingSoon: {
-    opacity: 0.6,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  processingIndicator: {
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  processingText: {
-    marginTop: 12,
     fontSize: 16,
-    color: colors.text,
     fontWeight: '600',
-  },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: colors.card,
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 24,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.success,
-  },
-  infoText: {
-    marginLeft: 12,
-    fontSize: 14,
-    color: colors.textSecondary,
-    flex: 1,
-    lineHeight: 20,
+    color: colors.text,
   },
 });
