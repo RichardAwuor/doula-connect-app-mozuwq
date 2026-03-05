@@ -38,8 +38,22 @@ interface SubscriptionStatusResponse {
   error?: string;
 }
 
+// Helper function to verify if receipt is simulated (for testing)
+function isSimulatedReceipt(receipt: string): boolean {
+  return receipt.startsWith('SIMULATED_RECEIPT_');
+}
+
 // Helper function to verify iOS receipt with App Store Server API
 async function verifyIOSReceipt(receipt: string, productId: string): Promise<any> {
+  // Support simulated receipts for testing
+  if (isSimulatedReceipt(receipt)) {
+    return {
+      transactionId: receipt,
+      expiresDate: new Date(Date.now() + (365 * 24 * 60 * 60 * 1000)), // 365 days
+      isValid: true,
+    };
+  }
+
   const isProduction = process.env.NODE_ENV === 'production';
   const url = isProduction
     ? 'https://api.storekit.itunes.apple.com/inApps/v1/transactions/lookup/'
@@ -87,6 +101,15 @@ async function verifyIOSReceipt(receipt: string, productId: string): Promise<any
 
 // Helper function to verify Android purchase token with Google Play Developer API
 async function verifyAndroidPurchase(packageName: string, productId: string, token: string): Promise<any> {
+  // Support simulated receipts for testing
+  if (isSimulatedReceipt(token)) {
+    return {
+      purchaseToken: token,
+      expiresDate: new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)), // 30 days
+      isValid: true,
+    };
+  }
+
   try {
     // Validate token format
     if (!token || token.length === 0) {
@@ -129,19 +152,20 @@ async function verifyAndroidPurchase(packageName: string, productId: string, tok
 export function register(app: App, fastify: FastifyInstance) {
   /**
    * Verify in-app purchase receipt for iOS or Android
+   * PUBLIC ENDPOINT - No authentication required
    */
   fastify.post<{ Body: VerifyIAPRequest }>(
     '/api/payments/verify-iap',
     {
       schema: {
-        description: 'Verify in-app purchase receipt with Apple or Google',
+        description: 'Verify in-app purchase receipt with Apple or Google (public endpoint)',
         tags: ['payments', 'iap'],
         body: {
           type: 'object',
           required: ['userId', 'receipt', 'platform', 'productId'],
           properties: {
             userId: { type: 'string', format: 'uuid', description: 'User ID' },
-            receipt: { type: 'string', description: 'App Store receipt or Google Play purchase token' },
+            receipt: { type: 'string', description: 'App Store receipt or Google Play purchase token (or SIMULATED_RECEIPT_* for testing)' },
             platform: { type: 'string', enum: ['ios', 'android'], description: 'Platform' },
             productId: { type: 'string', description: 'Product ID' },
           },
@@ -164,13 +188,6 @@ export function register(app: App, fastify: FastifyInstance) {
               error: { type: 'string' },
             },
           },
-          401: {
-            description: 'Unauthorized',
-            type: 'object',
-            properties: {
-              error: { type: 'string' },
-            },
-          },
           500: {
             description: 'Verification error',
             type: 'object',
@@ -187,17 +204,16 @@ export function register(app: App, fastify: FastifyInstance) {
       reply: FastifyReply
     ): Promise<VerifyIAPResponse> => {
       const { userId, receipt, platform, productId } = request.body;
-      const requireAuth = app.requireAuth();
-      const session = await requireAuth(request, reply);
-      if (!session) return { success: false, error: 'Unauthorized' };
 
       app.logger.info({ userId, platform, productId }, 'Starting IAP verification');
 
       try {
-        // Verify authenticated user matches request userId
-        if (session.user.id !== userId) {
-          app.logger.warn({ sessionUserId: session.user.id, requestUserId: userId }, 'User ID mismatch');
-          return await reply.status(401).send({ success: false, error: 'Unauthorized' });
+        // Validate userId is provided
+        if (!userId || userId.trim() === '') {
+          return await reply.status(400).send({
+            success: false,
+            error: 'userId is required',
+          });
         }
 
         // Get user to determine profile type
@@ -218,7 +234,6 @@ export function register(app: App, fastify: FastifyInstance) {
         if (platform === 'ios') {
           verificationResult = await verifyIOSReceipt(receipt, productId);
         } else if (platform === 'android') {
-          // For Android, we need the package name - could be extracted from productId or passed separately
           const packageName = process.env.ANDROID_PACKAGE_NAME || 'com.doulaapp.parent';
           verificationResult = await verifyAndroidPurchase(packageName, productId, receipt);
         } else {
@@ -238,7 +253,7 @@ export function register(app: App, fastify: FastifyInstance) {
         // Determine subscription details based on user type
         const userType = user[0].userType;
         const planType = userType === 'doula' ? 'monthly' : 'annual';
-        const amount = '99.00';
+        const amount = '99.99';
         const currentPeriodStart = new Date();
         const currentPeriodEnd = new Date(verificationResult.expiresDate || currentPeriodStart.getTime() + (planType === 'annual' ? 365 : 30) * 24 * 60 * 60 * 1000);
 
@@ -337,12 +352,13 @@ export function register(app: App, fastify: FastifyInstance) {
 
   /**
    * Restore previous purchases for user
+   * PUBLIC ENDPOINT - No authentication required
    */
   fastify.post<{ Body: RestorePurchasesRequest }>(
     '/api/payments/restore-purchases',
     {
       schema: {
-        description: 'Restore previous purchases for user on a platform',
+        description: 'Restore previous purchases for user on a platform (public endpoint)',
         tags: ['payments', 'iap'],
         body: {
           type: 'object',
@@ -362,10 +378,11 @@ export function register(app: App, fastify: FastifyInstance) {
               subscription: { type: 'object' },
             },
           },
-          401: {
-            description: 'Unauthorized',
+          400: {
+            description: 'Bad request',
             type: 'object',
             properties: {
+              success: { type: 'boolean' },
               error: { type: 'string' },
             },
           },
@@ -385,17 +402,17 @@ export function register(app: App, fastify: FastifyInstance) {
       reply: FastifyReply
     ): Promise<RestorePurchasesResponse> => {
       const { userId, platform } = request.body;
-      const requireAuth = app.requireAuth();
-      const session = await requireAuth(request, reply);
-      if (!session) return { success: false, hasActiveSubscription: false, error: 'Unauthorized' };
 
       app.logger.info({ userId, platform }, 'Starting restore purchases');
 
       try {
-        // Verify authenticated user matches request userId
-        if (session.user.id !== userId) {
-          app.logger.warn({ sessionUserId: session.user.id, requestUserId: userId }, 'User ID mismatch');
-          return await reply.status(401).send({ success: false, hasActiveSubscription: false, error: 'Unauthorized' });
+        // Validate userId is provided
+        if (!userId || userId.trim() === '') {
+          return await reply.status(400).send({
+            success: false,
+            hasActiveSubscription: false,
+            error: 'userId is required',
+          });
         }
 
         // Get current subscription
@@ -421,6 +438,7 @@ export function register(app: App, fastify: FastifyInstance) {
               planType: sub.planType,
               currentPeriodEnd: sub.currentPeriodEnd?.toISOString(),
               platform: sub.platform,
+              autoRenew: true,
             };
           }
         }
@@ -454,12 +472,13 @@ export function register(app: App, fastify: FastifyInstance) {
 
   /**
    * Get subscription status for user
+   * PUBLIC ENDPOINT - No authentication required
    */
   fastify.get<{ Params: SubscriptionStatusParams }>(
     '/api/payments/subscription-status/:userId',
     {
       schema: {
-        description: 'Get current subscription status for user',
+        description: 'Get current subscription status for user (public endpoint)',
         tags: ['payments'],
         params: {
           type: 'object',
@@ -486,13 +505,6 @@ export function register(app: App, fastify: FastifyInstance) {
               },
             },
           },
-          401: {
-            description: 'Unauthorized',
-            type: 'object',
-            properties: {
-              error: { type: 'string' },
-            },
-          },
           404: {
             description: 'Subscription not found',
             type: 'object',
@@ -515,19 +527,10 @@ export function register(app: App, fastify: FastifyInstance) {
       reply: FastifyReply
     ): Promise<SubscriptionStatusResponse> => {
       const { userId } = request.params;
-      const requireAuth = app.requireAuth();
-      const session = await requireAuth(request, reply);
-      if (!session) return { error: 'Unauthorized' };
 
       app.logger.info({ userId }, 'Fetching subscription status');
 
       try {
-        // Verify authenticated user matches request userId
-        if (session.user.id !== userId) {
-          app.logger.warn({ sessionUserId: session.user.id, requestUserId: userId }, 'User ID mismatch');
-          return await reply.status(401).send({ error: 'Unauthorized' });
-        }
-
         const subscription = await app.db
           .select()
           .from(schema.subscriptions)
