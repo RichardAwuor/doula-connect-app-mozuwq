@@ -117,6 +117,11 @@ export default function FloatingTabBar({
     };
   });
 
+  // Active tab color is magenta (#FF69B4) from colors.primary
+  const ACTIVE_TAB_COLOR = colors.primary; // Magenta #FF69B4
+  const INACTIVE_TAB_COLOR = theme.dark ? '#98989D' : '#000000';
+  const INACTIVE_LABEL_COLOR = theme.dark ? '#98989D' : '#8E8E93';
+
   // Dynamic styles based on theme - Active indicator and icon color set to magenta
   const dynamicStyles = {
     blurContainer: {
@@ -147,7 +152,7 @@ export default function FloatingTabBar({
     },
     indicator: {
       ...styles.indicator,
-      backgroundColor: colors.primary,
+      backgroundColor: ACTIVE_TAB_COLOR, // Magenta background for active tab
       width: `${tabWidthPercent}%` as `${number}%`,
     },
   };
@@ -170,8 +175,8 @@ export default function FloatingTabBar({
           <View style={styles.tabsContainer}>
             {tabs.map((tab, index) => {
               const isActive = activeTabIndex === index;
-              const iconColor = isActive ? colors.primary : (theme.dark ? '#98989D' : '#000000');
-              const labelColor = isActive ? colors.primary : (theme.dark ? '#98989D' : '#8E8E93');
+              const iconColor = isActive ? ACTIVE_TAB_COLOR : INACTIVE_TAB_COLOR;
+              const labelColor = isActive ? ACTIVE_TAB_COLOR : INACTIVE_LABEL_COLOR;
 
               return (
                 <React.Fragment key={index}>
