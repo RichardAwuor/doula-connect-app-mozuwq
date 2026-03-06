@@ -97,6 +97,8 @@ export function ErrorModal({
   details,
   onClose,
 }: ErrorModalProps) {
+  const showDetails = details && details.trim().length > 0;
+  
   return (
     <Modal
       visible={visible}
@@ -117,18 +119,10 @@ export function ErrorModal({
           
           <Text style={styles.title}>{title}</Text>
           
-          <ScrollView style={styles.messageScrollView} showsVerticalScrollIndicator={false}>
-            <Text style={styles.message}>{message}</Text>
-            {details && (
-              <View style={styles.detailsContainer}>
-                <Text style={styles.detailsLabel}>Technical Details:</Text>
-                <Text style={styles.detailsText}>{details}</Text>
-              </View>
-            )}
-          </ScrollView>
+          <Text style={styles.message}>{message}</Text>
 
           <TouchableOpacity
-            style={[styles.button, styles.confirmButton, styles.fullWidthButton]}
+            style={[styles.button, styles.confirmButton, styles.fullWidthButton, { marginTop: 24 }]}
             onPress={onClose}
           >
             <Text style={styles.confirmButtonText}>OK</Text>
@@ -153,7 +147,6 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     maxWidth: 400,
-    maxHeight: '80%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
@@ -174,36 +167,13 @@ const styles = StyleSheet.create({
   message: {
     fontSize: 16,
     color: colors.textSecondary,
-    marginBottom: 24,
     textAlign: 'center',
     lineHeight: 22,
-  },
-  messageScrollView: {
-    maxHeight: 300,
-    marginBottom: 24,
-  },
-  detailsContainer: {
-    backgroundColor: colors.secondary,
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 12,
-  },
-  detailsLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: 6,
-    textTransform: 'uppercase',
-  },
-  detailsText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontFamily: 'monospace',
-    lineHeight: 18,
   },
   buttonContainer: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 24,
   },
   button: {
     flex: 1,

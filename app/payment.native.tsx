@@ -37,7 +37,6 @@ export default function PaymentScreen() {
   const [processing, setProcessing] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [errorDetails, setErrorDetails] = useState('');
   const [showApplePaymentSheet, setShowApplePaymentSheet] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'idle' | 'authenticating' | 'processing' | 'verifying'>('idle');
 
@@ -189,15 +188,12 @@ export default function PaymentScreen() {
         console.log('[Payment Native] ✅ Purchases restored successfully!');
         router.replace('/(tabs)/connect');
       } else {
-        setErrorMessage('No active subscription found to restore. Please purchase a subscription to continue.');
-        setErrorDetails('');
+        setErrorMessage('No active subscription found. Please subscribe to continue.');
         setShowErrorModal(true);
       }
     } catch (error: any) {
       console.error('[Payment Native] Restore purchases error:', error);
-      setErrorMessage(error.message || 'Failed to restore purchases. Please try again.');
-      setErrorDetails(JSON.stringify(error));
-      setShowErrorModal(true);
+      handlePaymentError(error);
     } finally {
       setProcessing(false);
     }
@@ -206,32 +202,31 @@ export default function PaymentScreen() {
   const handlePaymentError = (error: any) => {
     console.error('[Payment Native] Payment error details:', error);
     
-    let userMessage = 'An unexpected error occurred during payment.';
-    let technicalDetails = '';
+    let userMessage = 'Payment could not be completed. Please try again.';
 
     const errorMsg = error?.message || '';
 
-    if (
+    // Simplify error messages to be user-friendly
+    if (errorMsg.toLowerCase().includes('user not found')) {
+      userMessage = 'Account not found. Please complete registration first.';
+    } else if (
       errorMsg.includes('Network request failed') ||
       errorMsg.includes('Unable to connect')
     ) {
-      userMessage = 'Cannot connect to the server. Please check your internet connection.';
-      technicalDetails = errorMsg;
+      userMessage = 'Connection error. Please check your internet and try again.';
     } else if (
       errorMsg.includes('Purchase verification failed') ||
       errorMsg.includes('500')
     ) {
-      userMessage = 'Server error occurred while verifying your purchase. Please contact support.';
-      technicalDetails = errorMsg;
+      userMessage = 'Server error. Please try again or contact support.';
+    } else if (errorMsg.includes('timeout')) {
+      userMessage = 'Request timed out. Please try again.';
     } else if (errorMsg) {
+      // Use the error message if it's already user-friendly
       userMessage = errorMsg;
-      technicalDetails = error.stack || error.toString();
-    } else {
-      technicalDetails = JSON.stringify(error, null, 2);
     }
 
     setErrorMessage(userMessage);
-    setErrorDetails(technicalDetails);
     setShowErrorModal(true);
   };
 
@@ -489,7 +484,6 @@ export default function PaymentScreen() {
         visible={showErrorModal}
         title="Payment Failed"
         message={errorMessage}
-        details={errorDetails}
         onClose={() => setShowErrorModal(false)}
       />
     </SafeAreaView>
