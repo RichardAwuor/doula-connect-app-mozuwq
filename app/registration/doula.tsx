@@ -449,7 +449,10 @@ export default function DoulaRegistrationScreen() {
         <View style={commonStyles.card}>
           <Text style={commonStyles.subtitle}>{t('personalInfo')}</Text>
           
-          <Text style={commonStyles.label}>{t('firstName')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('firstName')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <TextInput
             style={commonStyles.input}
             value={firstName}
@@ -458,7 +461,10 @@ export default function DoulaRegistrationScreen() {
             placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={commonStyles.label}>{t('lastName')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('lastName')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <TextInput
             style={commonStyles.input}
             value={lastName}
@@ -467,7 +473,10 @@ export default function DoulaRegistrationScreen() {
             placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={commonStyles.label}>{t('state')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('state')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <DropdownPicker
             options={getStates()}
             value={state}
@@ -476,7 +485,10 @@ export default function DoulaRegistrationScreen() {
             searchable={true}
           />
 
-          <Text style={commonStyles.label}>{t('town')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('town')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <DropdownPicker
             options={getCitiesByState(state)}
             value={town}
@@ -486,7 +498,10 @@ export default function DoulaRegistrationScreen() {
             disabled={!state}
           />
 
-          <Text style={commonStyles.label}>{t('zipCode')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('zipCode')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <DropdownPicker
             options={getZipCodesByCity(state, town)}
             value={zipCode}
@@ -517,7 +532,10 @@ export default function DoulaRegistrationScreen() {
         <View style={commonStyles.card}>
           <Text style={commonStyles.subtitle}>{t('paymentServices')}</Text>
           
-          <Text style={commonStyles.label}>{t('paymentPref')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('paymentPref')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <CheckboxItem
             label={t('directCash')}
             checked={paymentPreferences.includes('self')}
@@ -560,7 +578,10 @@ export default function DoulaRegistrationScreen() {
             </View>
           </View>
 
-          <Text style={commonStyles.label}>{t('serviceCategories')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('serviceCategories')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <CheckboxItem
             label={t('birthDoula')}
             checked={serviceCategories.includes('birth')}
@@ -574,7 +595,10 @@ export default function DoulaRegistrationScreen() {
         </View>
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>{t('languages')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.subtitle}>{t('languages')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           {(['English', 'Spanish', 'Chinese', 'Tagalog', 'Arabic', 'Hebrew', 'Vietnamese'] as SpokenLanguage[]).map((lang) => (
             <CheckboxItem
               key={lang}
@@ -586,7 +610,10 @@ export default function DoulaRegistrationScreen() {
         </View>
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>{t('certifications')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.subtitle}>{t('certifications')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <CheckboxItem
             label={t('doulaCert')}
             checked={certifications.includes('doula_certification')}
@@ -620,7 +647,10 @@ export default function DoulaRegistrationScreen() {
         </View>
 
         <View style={commonStyles.card}>
-          <Text style={commonStyles.subtitle}>{t('profilePic')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.subtitle}>{t('profilePic')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <TouchableOpacity style={styles.uploadButton} onPress={pickProfilePicture}>
             <IconSymbol
               ios_icon_name="camera"
@@ -717,11 +747,20 @@ export default function DoulaRegistrationScreen() {
         </View>
 
         <View style={commonStyles.card}>
-          <CheckboxItem
-            label={`${t('terms')} *`}
-            checked={acceptedTerms}
-            onPress={() => setAcceptedTerms(!acceptedTerms)}
-          />
+          <TouchableOpacity style={commonStyles.checkboxContainer} onPress={() => setAcceptedTerms(!acceptedTerms)}>
+            <View style={[commonStyles.checkbox, acceptedTerms && commonStyles.checkboxChecked]}>
+              {acceptedTerms && (
+                <IconSymbol
+                  ios_icon_name="checkmark"
+                  android_material_icon_name="check"
+                  size={16}
+                  color={colors.card}
+                />
+              )}
+            </View>
+            <Text style={commonStyles.checkboxLabel}>{t('terms')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={commonStyles.button} onPress={handleSubmit}>

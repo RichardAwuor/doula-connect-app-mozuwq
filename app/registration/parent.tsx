@@ -360,7 +360,10 @@ export default function ParentRegistrationScreen() {
         <View style={commonStyles.card}>
           <Text style={commonStyles.subtitle}>{t('personalInfo')}</Text>
           
-          <Text style={commonStyles.label}>{t('firstName')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('firstName')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <TextInput
             style={commonStyles.input}
             value={firstName}
@@ -369,7 +372,10 @@ export default function ParentRegistrationScreen() {
             placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={commonStyles.label}>{t('lastName')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('lastName')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <TextInput
             style={commonStyles.input}
             value={lastName}
@@ -378,7 +384,10 @@ export default function ParentRegistrationScreen() {
             placeholderTextColor={colors.textSecondary}
           />
 
-          <Text style={commonStyles.label}>{t('state')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('state')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <DropdownPicker
             options={getStates()}
             value={state}
@@ -387,7 +396,10 @@ export default function ParentRegistrationScreen() {
             searchable={true}
           />
 
-          <Text style={commonStyles.label}>{t('town')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('town')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <DropdownPicker
             options={getCitiesByState(state)}
             value={town}
@@ -397,7 +409,10 @@ export default function ParentRegistrationScreen() {
             disabled={!state}
           />
 
-          <Text style={commonStyles.label}>{t('zipCode')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('zipCode')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <DropdownPicker
             options={getZipCodesByCity(state, town)}
             value={zipCode}
@@ -411,7 +426,10 @@ export default function ParentRegistrationScreen() {
         <View style={commonStyles.card}>
           <Text style={commonStyles.subtitle}>{t('serviceReq')}</Text>
           
-          <Text style={commonStyles.label}>{t('serviceCategory')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('serviceCategory')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <CheckboxItem
             label={t('birthDoula')}
             checked={serviceCategories.includes('birth')}
@@ -423,7 +441,10 @@ export default function ParentRegistrationScreen() {
             onPress={() => toggleServiceCategory('postpartum')}
           />
 
-          <Text style={[commonStyles.label, { marginTop: 16 }]}>{t('financingType')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
+            <Text style={commonStyles.label}>{t('financingType')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <CheckboxItem
             label={t('selfPay')}
             checked={financingTypes.includes('self')}
@@ -444,7 +465,10 @@ export default function ParentRegistrationScreen() {
         <View style={commonStyles.card}>
           <Text style={commonStyles.subtitle}>{t('servicePeriod')}</Text>
           
-          <Text style={commonStyles.label}>{t('startDate')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('startDate')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <TouchableOpacity
             style={commonStyles.input}
             onPress={() => setShowStartDatePicker(true)}
@@ -468,7 +492,10 @@ export default function ParentRegistrationScreen() {
             />
           )}
 
-          <Text style={commonStyles.label}>{t('endDate')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('endDate')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <TouchableOpacity
             style={commonStyles.input}
             onPress={() => setShowEndDatePicker(true)}
@@ -496,7 +523,10 @@ export default function ParentRegistrationScreen() {
         <View style={commonStyles.card}>
           <Text style={commonStyles.subtitle}>{t('preferences')}</Text>
           
-          <Text style={commonStyles.label}>{t('preferredLang')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('preferredLang')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           {(['English', 'Spanish', 'Chinese', 'Tagalog', 'Arabic', 'Hebrew', 'Vietnamese'] as SpokenLanguage[]).map((lang) => (
             <CheckboxItem
               key={lang}
@@ -506,7 +536,10 @@ export default function ParentRegistrationScreen() {
             />
           ))}
 
-          <Text style={[commonStyles.label, { marginTop: 16 }]}>{t('desiredDays')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
+            <Text style={commonStyles.label}>{t('desiredDays')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           {(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as DayOfWeek[]).map((day) => (
             <CheckboxItem
               key={day}
@@ -517,7 +550,10 @@ export default function ParentRegistrationScreen() {
           ))}
 
           <Text style={[commonStyles.label, { marginTop: 16 }]}>{t('desiredHours')}</Text>
-          <Text style={commonStyles.label}>{t('startTime')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('startTime')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <TouchableOpacity
             style={commonStyles.input}
             onPress={() => setShowStartTimePicker(true)}
@@ -541,7 +577,10 @@ export default function ParentRegistrationScreen() {
             />
           )}
 
-          <Text style={commonStyles.label}>{t('endTime')} *</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={commonStyles.label}>{t('endTime')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </View>
           <TouchableOpacity
             style={commonStyles.input}
             onPress={() => setShowEndTimePicker(true)}
@@ -567,11 +606,20 @@ export default function ParentRegistrationScreen() {
         </View>
 
         <View style={commonStyles.card}>
-          <CheckboxItem
-            label={`${t('terms')} *`}
-            checked={acceptedTerms}
-            onPress={() => setAcceptedTerms(!acceptedTerms)}
-          />
+          <TouchableOpacity style={commonStyles.checkboxContainer} onPress={() => setAcceptedTerms(!acceptedTerms)}>
+            <View style={[commonStyles.checkbox, acceptedTerms && commonStyles.checkboxChecked]}>
+              {acceptedTerms && (
+                <IconSymbol
+                  ios_icon_name="checkmark"
+                  android_material_icon_name="check"
+                  size={16}
+                  color={colors.card}
+                />
+              )}
+            </View>
+            <Text style={commonStyles.checkboxLabel}>{t('terms')}</Text>
+            <Text style={{ color: 'red' }}> *</Text>
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={commonStyles.button} onPress={handleSubmit}>
