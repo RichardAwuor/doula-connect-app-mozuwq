@@ -90,7 +90,7 @@ export default function ParentRegistrationScreen() {
       missingFieldsTitle: { en: 'Missing Required Fields', es: 'Campos Requeridos Faltantes' },
       missingFieldsMessage: { en: 'Please complete all required fields:', es: 'Por favor complete todos los campos requeridos:' },
       registrationError: { en: 'Registration Error', es: 'Error de Registro' },
-      serverError: { en: 'Server error occurred. Please try again later.', es: 'Ocurrió un error del servidor. Por favor intente más tarde.' },
+      serverError: { en: "We couldn't complete your registration. Please check your connection and try again. If the problem continues, contact support.", es: 'No pudimos completar tu registro. Por favor verifica tu conexión e intenta de nuevo. Si el problema continúa, contacta a soporte.' },
     };
     return translations[key]?.[language] || key;
   };
