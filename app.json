@@ -44,9 +44,17 @@
       "expo-router",
       "expo-web-browser",
       [
-        "react-native-iap",
+        "expo-build-properties",
         {
-          "enablePendingPurchases": true
+          "ios": {
+            "deploymentTarget": "15.1"
+          },
+          "android": {
+            "kotlinVersion": "2.0.21",
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "minSdkVersion": 24
+          }
         }
       ]
     ],

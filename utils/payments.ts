@@ -1,5 +1,4 @@
 
-import * as InAppPurchases from 'react-native-iap';
 import { Platform } from 'react-native';
 import { apiPost, apiGet } from './api';
 
@@ -24,80 +23,6 @@ export interface SubscriptionStatus {
 }
 
 /**
- * Initialize in-app purchases connection
- */
-export async function initializeIAP(): Promise<boolean> {
-  try {
-    console.log('[Payments] Initializing IAP connection...');
-    await InAppPurchases.initConnection();
-    console.log('[Payments] IAP connection initialized successfully');
-    return true;
-  } catch (error) {
-    console.error('[Payments] Failed to initialize IAP:', error);
-    return false;
-  }
-}
-
-/**
- * Get available products for the user
- */
-export async function getAvailableProducts(userType: 'parent' | 'doula'): Promise<InAppPurchases.Product[]> {
-  try {
-    const productId = userType === 'parent' ? PRODUCT_IDS.parent_annual : PRODUCT_IDS.doula_monthly;
-    console.log('[Payments] Fetching products for:', productId);
-    
-    const products = await InAppPurchases.getProducts({ skus: [productId] });
-    console.log('[Payments] Available products:', products);
-    
-    return products;
-  } catch (error) {
-    console.error('[Payments] Failed to get products:', error);
-    return [];
-  }
-}
-
-/**
- * Purchase a subscription
- */
-export async function purchaseSubscription(
-  productId: string,
-  onSuccess: (purchase: InAppPurchases.Purchase) => void,
-  onError: (error: any) => void
-): Promise<void> {
-  try {
-    console.log('[Payments] Requesting purchase for:', productId);
-    
-    // Set up purchase listeners
-    const purchaseUpdateSubscription = InAppPurchases.purchaseUpdatedListener(
-      async (purchase: InAppPurchases.Purchase) => {
-        console.log('[Payments] Purchase updated:', purchase);
-        onSuccess(purchase);
-      }
-    );
-
-    const purchaseErrorSubscription = InAppPurchases.purchaseErrorListener(
-      (error: InAppPurchases.PurchaseError) => {
-        console.error('[Payments] Purchase error:', error);
-        onError(error);
-      }
-    );
-
-    // Request the purchase
-    await InAppPurchases.requestPurchase({ sku: productId });
-
-    // Cleanup listeners after 60 seconds
-    setTimeout(() => {
-      purchaseUpdateSubscription.remove();
-      purchaseErrorSubscription.remove();
-    }, 60000);
-
-  } catch (error) {
-    console.error('[Payments] Failed to request purchase:', error);
-    onError(error);
-  }
-}
-
-/**
  * Verify purchase with backend
  */
 export async function verifyPurchase(
@@ -109,7 +34,7 @@ export async function verifyPurchase(
   try {
     console.log('[Payments] Verifying purchase with backend...');
     console.log('[Payments] POST /api/payments/verify-iap', { userId, platform, productId });
-    
+
     const response = await apiPost('/api/payments/verify-iap', {
       userId,
       receipt,
@@ -129,19 +54,6 @@ export async function verifyPurchase(
 }
 
 /**
- * Finish a transaction
- */
-export async function finishTransaction(purchase: InAppPurchases.Purchase): Promise<void> {
-  try {
-    console.log('[Payments] Finishing transaction:', purchase.transactionId);
-    await InAppPurchases.finishTransaction({ purchase });
-    console.log('[Payments] Transaction finished successfully');
-  } catch (error) {
-    console.error('[Payments] Failed to finish transaction:', error);
-  }
-}
-
-/**
  * Restore previous purchases
  */
 export async function restorePurchases(
@@ -151,7 +63,7 @@ export async function restorePurchases(
   try {
     console.log('[Payments] Restoring purchases...');
     console.log('[Payments] POST /api/payments/restore-purchases', { userId, platform });
-    
+
     const response = await apiPost('/api/payments/restore-purchases', {
       userId,
       platform,
@@ -175,11 +87,11 @@ export async function getSubscriptionStatus(userId: string): Promise<Subscriptio
   try {
     console.log('[Payments] Fetching subscription status for user:', userId);
     console.log('[Payments] GET /api/payments/subscription-status/' + userId);
-    
+
     const response = await apiGet(`/api/payments/subscription-status/${userId}`);
-    
+
     console.log('[Payments] Subscription status response:', response);
-    
+
     if (response.subscription) {
       return {
         status: response.subscription.status,
@@ -189,24 +101,11 @@ export async function getSubscriptionStatus(userId: string): Promise<Subscriptio
         autoRenew: response.subscription.autoRenew,
       };
     }
-    
+
     return { status: 'none' };
   } catch (error: any) {
     console.error('[Payments] Failed to get subscription status:', error);
     // 404 means no subscription found - that's a valid state
     return { status: 'none' };
-  }
-}
-
-/**
- * End IAP connection (cleanup)
- */
-export async function endIAPConnection(): Promise<void> {
-  try {
-    console.log('[Payments] Ending IAP connection...');
-    await InAppPurchases.endConnection();
-    console.log('[Payments] IAP connection ended');
-  } catch (error) {
-    console.error('[Payments] Failed to end IAP connection:', error);
   }
 }
